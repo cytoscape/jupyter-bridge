@@ -130,11 +130,11 @@ def _dequeue(map, lock, channel):
 
 
 if __name__=='__main__':
-    if len(sys.argv) > 2:
+    if len(sys.argv) > 1:
         host_ip = sys.argv[1]
     else:
         host_ip = '127.0.0.1'
-    if len(sys.argv) > 3:
+    if len(sys.argv) > 2:
         port = sys.argv[2]
     else:
         port = 9529
