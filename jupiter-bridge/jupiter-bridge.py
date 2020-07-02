@@ -52,7 +52,7 @@ def queue_request():
                 data = request.get_data()
                 message = json.loads(data.decode('utf-8'))
                 _enqueue(request_map, request_map_lock, channel, message)
-                return Response('', status=200, mimetype='text/plain')
+                return Response('', status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
         else:
@@ -68,7 +68,7 @@ def queue_reply():
             if request.content_type.startswith('text/plain'):
                 message = request.get_data()
                 _enqueue(reply_map, reply_map_lock, channel, message)
-                return Response('', status=200, mimetype='text/plain')
+                return Response('', status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be text/plain')
         else:
@@ -83,7 +83,7 @@ def dequeue_request():
             channel = request.args['channel']
             message = _dequeue(request_map, request_map_lock, channel) # Will block waiting for message
             message = json.dumps(message)
-            return Response(message, status=200, mimetype='application/json')
+            return Response(message, status=200, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
@@ -100,7 +100,7 @@ def dequeue_reply():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, mimetype='text/plain')
+        return Response(str(e), status=500, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
 def _enqueue(map, lock, channel, msg):
     lock.acquire()
