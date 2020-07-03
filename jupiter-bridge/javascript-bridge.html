@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Javascript Bridge to Cytoscape</title>
+</head>
+<body>
+
+<script>
+    /*
+    These functions serve as a bridge between a remote Jupyter server and Cytoscape. They proxy
+    the Jupyter server's HTTP calls (coming from a Jupyter Notebook with py4cytoscape) to
+    Cytoscape's CyREST layer. Note that for the case of a Jupyter server running on the same
+    machine as Cytoscape, this bridge isn't necessary because the Jupyter server's HTTP calls
+    can easily connect to Cytoscape over localhost. So, this bridge solves the problem of
+    a Jupyter server (e.g., Google's Colab) that can't connect to Cytoscape that sits behind
+    a firewall.
+
+    At a high level, py4cytoscape running in a remote Jupyter server sends its request to
+    the Jupyter Bridge, which holds the request until this Javascript Bridge picks it up. The
+    Javascript Bridge fulfills the request by making an HTTP request to Cytoscape's CyREST. When
+    it gets a result, it passes it back to Jupyter Bridge, and py4cytoscape picks it up and
+    and continues execution of the Notebook.
+
+    The request represents an HTTP call that py4cytoscape would normally make via HTTP directly
+    to Cytoscape via localhost when both py4cytoscape and Cytoscape are running on the same machine.
+    The possible requests are:
+
+    GET(url, params) - may return plain text or JSON
+    POST(url, params, body as JSON) - may return plain text or JSON
+    POST(url, data as JSON, headers as {'Content-Type': 'application/json', 'Accept': 'application/json'} - returns JSON
+    PUT(url, params, body as JSON) - may return plain text or JSON
+    DELETE(url, params)
+
+    To handle this:
+    * The URL is rewritten to be http://localhost:1234
+    * The params is passed in as stringified JSON
+    * The body is passed in as stringified JSON
+    * The data is passed in as stringified JSON
+    * Headers are passed in as stringified JSON
+    * Data and status are passed back as text and interpreted by the caller
+
+    Unhandled requests (so far):
+    webbrowser.open()
+
+     */
+
+const testGET1 = { // expect 200 {"apiVersion": "v1", "cytoscapeVersion": "3.9.0-SNAPSHOT"}
+    "command": "GET",
+    "url": "http://somehost:9999/v1/version",
+    "params": null,
+    "data": null,
+    "headers": null,
+}
+
+const testPOST1 = { // expect 200 {"data": ["string"], "errors": []}
+    "command": "POST",
+    "url": "http://somehost:9999/v1/commands/command/echo",
+    "params": null,
+    "data": {"message": "this is a message"},
+    "headers": {"Content-Type": "application/json", "Accept": "application/json"},
+}
+
+const testPUT1 = { // expect 200 {"data": {}, "errors": []}
+    "command": "PUT",
+    "url": "http://somehost:9999/v1/networks/currentNetwork",
+    "params": null,
+    "data": {"networkSUID": "1054801"},
+    "headers": {"Content-Type": "application/json", "Accept": "application/json"},
+}
+
+const testDELETE1 = { // expect 200 no-content}
+    "command": "DELETE",
+    "url": "http://somehost:9999/v1/networks/1054801",
+    "params": null,
+    "data": null,
+    "headers": {"Accept": "application/json"},
+}
+
+const testCOMMAND1 = { // expect 200 {"data": {}, "errors": []}
+    "command": "POST",
+    "url": "http://somehost:9999/v1/commands/session/open",
+    "params": null,
+    "data": {"file": "C:\\Program Files\\Cytoscape_v3.9.0-SNAPSHOT-May 29\\sampleData\\galFiltered.cys"},
+    "headers": {"Content-Type": "application/json", "Accept": "application/json"},
+}
+
+
+
+function parseURL(url) {
+    var reURLInformation = new RegExp([
+        '^(https?:)//', // protocol
+        '(([^:/?#]*)(?::([0-9]+))?)', // host (hostname and port)
+        '(/{0,1}[^?#]*)', // pathname
+        '(\\?[^#]*|)', // search
+        '(#.*|)$' // hash
+    ].join(''));
+    var match = url.match(reURLInformation);
+    return match && {
+        url: url,
+        protocol: match[1],
+        host: match[2],
+        hostname: match[3],
+        port: match[4],
+        pathname: match[5],
+        search: match[6],
+        hash: match[7]
+    }
+}
+
+function doCall(callSpec) {
+    const http = new XMLHttpRequest();
+
+    http.onreadystatechange = function() {
+        if (http.readyState === 4) {
+            alert(http.status) // 0 for invalid port or URL
+            alert(http.responseText)
+        }
+    }
+
+    localURL = 'http://localhost:1234' + parseURL(callSpec.url).pathname
+
+    http.open(callSpec.command, localURL, true)
+    for (header in callSpec.headers) {
+        http.setRequestHeader(header, callSpec.headers[header])
+    }
+
+    http.send(JSON.stringify(callSpec.data))
+}
+
+//doCall(testGET1)
+//doCall(testPOST1)
+//doCall(testPUT1)
+//doCall(testDELETE1)
+  doCall(testCOMMAND1)
+
+</script>
+
+</body>
+</html>
