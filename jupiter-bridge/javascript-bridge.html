@@ -45,47 +45,6 @@
 
      */
 
-const testGET1 = { // expect 200 {"apiVersion": "v1", "cytoscapeVersion": "3.9.0-SNAPSHOT"}
-    "command": "GET",
-    "url": "http://somehost:9999/v1/version",
-    "params": null,
-    "data": null,
-    "headers": null,
-}
-
-const testPOST1 = { // expect 200 {"data": ["string"], "errors": []}
-    "command": "POST",
-    "url": "http://somehost:9999/v1/commands/command/echo",
-    "params": null,
-    "data": {"message": "this is a message"},
-    "headers": {"Content-Type": "application/json", "Accept": "application/json"},
-}
-
-const testPUT1 = { // expect 200 {"data": {}, "errors": []}
-    "command": "PUT",
-    "url": "http://somehost:9999/v1/networks/currentNetwork",
-    "params": null,
-    "data": {"networkSUID": "1054801"},
-    "headers": {"Content-Type": "application/json", "Accept": "application/json"},
-}
-
-const testDELETE1 = { // expect 200 no-content}
-    "command": "DELETE",
-    "url": "http://somehost:9999/v1/networks/1054801",
-    "params": null,
-    "data": null,
-    "headers": {"Accept": "application/json"},
-}
-
-const testCOMMAND1 = { // expect 200 {"data": {}, "errors": []}
-    "command": "POST",
-    "url": "http://somehost:9999/v1/commands/session/open",
-    "params": null,
-    "data": {"file": "C:\\Program Files\\Cytoscape_v3.9.0-SNAPSHOT-May 29\\sampleData\\galFiltered.cys"},
-    "headers": {"Content-Type": "application/json", "Accept": "application/json"},
-}
-
-
 
 function parseURL(url) {
     var reURLInformation = new RegExp([
@@ -108,31 +67,124 @@ function parseURL(url) {
     }
 }
 
-function doCall(callSpec) {
-    const http = new XMLHttpRequest();
+function replyCytoscape(replyStatus, replyText) {
+    const httpR = new XMLHttpRequest();
 
-    http.onreadystatechange = function() {
-        if (http.readyState === 4) {
-            alert(http.status) // 0 for invalid port or URL
-            alert(http.responseText)
+    // Clean up after Jupyter bridge accepts reply
+    httpR.onreadystatechange = function() {
+        if (httpR.readyState === 4) {
+            console.log(' status: ' + httpR.status + ', reply: ' + httpR.responseText)
         }
     }
 
-    localURL = 'http://localhost:1234' + parseURL(callSpec.url).pathname
+    reply = {"status": replyStatus, "text": replyText}
 
-    http.open(callSpec.command, localURL, true)
-    for (header in callSpec.headers) {
-        http.setRequestHeader(header, callSpec.headers[header])
-    }
-
-    http.send(JSON.stringify(callSpec.data))
+    // Send reply to Jupyter bridge
+    jupyterBridgeURL = 'http://cayuse.dreamhost.com:9529/queue_reply?channel=1'
+    jupyterBridgeURL = 'http://localhost:9529/queue_reply?channel=1'
+    console.log('Starting queue to Jupyter bridge: ' + jupyterBridgeURL)
+    httpR.open('POST', jupyterBridgeURL, true)
+    httpR.setRequestHeader('Content-Type', 'text/plain')
+    httpR.send(JSON.stringify(reply))
 }
 
-//doCall(testGET1)
-//doCall(testPOST1)
-//doCall(testPUT1)
-//doCall(testDELETE1)
-  doCall(testCOMMAND1)
+function callCytoscape(callSpec) {
+    const httpC = new XMLHttpRequest();
+
+    // Captures Cytoscape reply and sends it on
+    httpC.onreadystatechange = function() {
+        if (httpC.readyState === 4) {
+            console.log(' status: ' + httpC.status + ', reply: ' + httpC.responseText)
+            replyCytoscape(httpC.status, httpC.responseText)
+        }
+    }
+
+    // Build up request to Cytoscape, making sure host is local
+    localURL = 'http://localhost:1234' + parseURL(callSpec.url).pathname
+
+    console.log('Command: ' + callSpec.command + ' (' + localURL + ')')
+    if (callSpec.headers) {console.log(' header: ' + JSON.stringify(callSpec.headers))}
+    if (callSpec.data) {console.log('   data: ' + JSON.stringify(callSpec.data))}
+
+    httpC.open(callSpec.command, localURL, true)
+    for (header in callSpec.headers) {
+        httpC.setRequestHeader(header, callSpec.headers[header])
+    }
+
+    // Send request to Cytoscape ... reply goes to onreadystatechange handler
+    httpC.send(JSON.stringify(callSpec.data))
+}
+
+
+function waitOnJupyterBridge() {
+    const httpJ = new XMLHttpRequest()
+
+    // Captures request from Jupyter bridge
+    httpJ.onreadystatechange = function() {
+        if (httpJ.readyState === 4) {
+            console.log(' status: ' + httpJ.status + ', reply: ' + httpJ.responseText)
+// Consider try: block in case responseText doesn't have JSON
+            callCytoscape(JSON.parse(httpJ.responseText))
+        }
+    }
+
+    // Wait for request from Jupyter bridge
+    jupyterBridgeURL = 'http://cayuse.dreamhost.com:9529/dequeue_request?channel=1'
+    jupyterBridgeURL = 'http://localhost:9529/dequeue_request?channel=1'
+    console.log('Starting dequeue on Jupyter bridge: ' + jupyterBridgeURL)
+    httpJ.open('GET', jupyterBridgeURL, true)
+    httpJ.send()
+}
+waitOnJupyterBridge()
+
+/*
+    Test cases for local debugging
+ */
+
+// const testGET1 = { // expect 200 {"apiVersion": "v1", "cytoscapeVersion": "3.9.0-SNAPSHOT"}
+//     "command": "GET",
+//     "url": "http://somehost:9999/v1/version",
+//     "params": null,
+//     "data": null,
+//     "headers": null,
+// }
+//callCytoscape(testGET1)
+
+// const testPOST1 = { // expect 200 {"data": ["string"], "errors": []}
+//     "command": "POST",
+//     "url": "http://somehost:9999/v1/commands/command/echo",
+//     "params": null,
+//     "data": {"message": "this is a message"},
+//     "headers": {"Content-Type": "application/json", "Accept": "application/json"},
+// }
+//callCytoscape(testPOST1)
+
+// const testPUT1 = { // expect 200 {"data": {}, "errors": []}
+//     "command": "PUT",
+//     "url": "http://somehost:9999/v1/networks/currentNetwork",
+//     "params": null,
+//     "data": {"networkSUID": "1056223"},
+//     "headers": {"Content-Type": "application/json", "Accept": "application/json"},
+// }
+//callCytoscape(testPUT1)
+
+// const testDELETE1 = { // expect 200 no-content}
+//     "command": "DELETE",
+//     "url": "http://somehost:9999/v1/networks/1056223",
+//     "params": null,
+//     "data": null,
+//     "headers": {"Accept": "application/json"},
+// }
+//callCytoscape(testDELETE1)
+
+// const testCOMMAND1 = { // expect 200 {"data": {}, "errors": []}
+//     "command": "POST",
+//     "url": "http://somehost:9999/v1/commands/session/open",
+//     "params": null,
+//     "data": {"file": "C:\\Program Files\\Cytoscape_v3.9.0-SNAPSHOT-May 29\\sampleData\\galFiltered.cys"},
+//     "headers": {"Content-Type": "application/json", "Accept": "application/json"},
+// }
+//callCytoscape(testCOMMAND1)
 
 </script>
 

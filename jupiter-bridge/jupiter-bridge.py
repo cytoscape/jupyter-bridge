@@ -43,7 +43,7 @@ reply_map = dict()
 reply_map_lock = threading.Lock()
 
 
-@app.route('/queue_request', methods=['PUT'])
+@app.route('/queue_request', methods=['POST'])
 def queue_request():
     try:
         if 'channel' in request.args:
@@ -60,7 +60,7 @@ def queue_request():
     except Exception as e:
         return Response(str(e), status=500, mimetype='text/plain')
 
-@app.route('/queue_reply', methods=['PUT'])
+@app.route('/queue_reply', methods=['POST'])
 def queue_reply():
     try:
         if 'channel' in request.args:
@@ -96,7 +96,7 @@ def dequeue_reply():
         if 'channel' in request.args:
             channel = request.args['channel']
             message = _dequeue(reply_map, reply_map_lock, channel) # Will block waiting for message
-            return Response(message, status=200, mimetype='text/plain')
+            return Response(message, status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
@@ -133,7 +133,7 @@ if __name__=='__main__':
     if len(sys.argv) > 1:
         host_ip = sys.argv[1]
     else:
-        host_ip = '127.0.0.1'
+        host_ip = 'localhost'
     if len(sys.argv) > 2:
         port = sys.argv[2]
     else:
