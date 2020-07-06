@@ -33,6 +33,7 @@ import sys
 import json
 import threading
 import queue
+import time
 
 app = Flask(__name__)
 
@@ -42,6 +43,12 @@ request_map_lock = threading.Lock()
 reply_map = dict()
 reply_map_lock = threading.Lock()
 
+channel_status = dict()
+channel_status_lock = threading.Lock()
+"""Structure:
+    request: {q: Queue, message: text, posted_time: time, pickup_wait: time, pickup_time: time}
+    reply:   {q: Queue, message: text, posted_time: time, pickup_wait: time, pickup_time: time}
+"""
 
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
@@ -51,7 +58,7 @@ def queue_request():
             if request.content_type.startswith('application/json'):
                 data = request.get_data()
                 message = json.loads(data.decode('utf-8'))
-                _enqueue(request_map, request_map_lock, channel, message)
+                _enqueue(request_map, request_map_lock, 'request', channel, message)
                 return Response('', status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
@@ -67,7 +74,7 @@ def queue_reply():
             channel = request.args['channel']
             if request.content_type.startswith('text/plain'):
                 message = request.get_data()
-                _enqueue(reply_map, reply_map_lock, channel, message)
+                _enqueue(reply_map, reply_map_lock, 'reply', channel, message)
                 return Response('', status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be text/plain')
@@ -81,7 +88,7 @@ def dequeue_request():
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
-            message = _dequeue(request_map, request_map_lock, channel) # Will block waiting for message
+            message = _dequeue(request_map, request_map_lock, 'request', channel) # Will block waiting for message
             message = json.dumps(message)
             return Response(message, status=200, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
@@ -95,27 +102,45 @@ def dequeue_reply():
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
-            message = _dequeue(reply_map, reply_map_lock, channel) # Will block waiting for message
+            message = _dequeue(reply_map, reply_map_lock, 'reply', channel) # Will block waiting for message
             return Response(message, status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
         return Response(str(e), status=500, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
-def _enqueue(map, lock, channel, msg):
+
+@app.route('/status', methods=['GET'])
+def status():
+    try:
+        return Response(json.dumps(channel_status), status=200, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
+    except Exception as e:
+        return Response(str(e), status=500, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+
+
+def _enqueue(map, lock, operation, channel, msg):
     lock.acquire()
     try:
+        channel_status_lock.acquire()
+        try:
+            if not channel in channel_status: channel_status[channel] = {operation: None}
+            channel_status[channel][operation] = {'post_time': time.asctime(), 'message': msg}
+        except Exception as e:
+            print(f'Error: exception trying to update {operation} channel status "{e}"')
+        finally:
+            channel_status_lock.release()
+
         if channel in map:
             q = map[channel]
             if q.full(): raise Exception(f'Channel {channel} contains unprocessed message')
         else:
             q = queue.Queue(1)
+            map[channel] = q
         q.put(msg)
-        map[channel] = q
     finally:
         lock.release()
 
-def _dequeue(map, lock, channel):
+def _dequeue(map, lock, operation, channel):
     lock.acquire()
     try:
         if channel in map:
@@ -125,7 +150,25 @@ def _dequeue(map, lock, channel):
             map[channel] = q
     finally:
         lock.release()
-    return q.get() # Block if no message, and return message and queue empty
+
+    channel_status_lock.acquire()
+    try:
+        if not channel in channel_status: channel_status[channel] = {operation: None}
+        if q.empty():
+            channel_status[channel][operation] = {'pickup_wait': time.asctime()}
+        else:
+            channel_status[channel][operation]['pickup_wait'] = time.asctime()
+    except Exception as e:
+        print(f'Error: exception trying to update {operation} channel status "{e}"')
+    finally:
+        channel_status_lock.release()
+
+
+
+    msg = q.get() # Block if no message, and return message and queue empty
+
+    channel_status[channel][operation]['pickup_time'] = time.asctime()
+    return msg
 
 
 
