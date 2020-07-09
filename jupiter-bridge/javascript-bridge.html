@@ -45,6 +45,11 @@
 
      */
 
+// const JupyterBridge = 'http://cayuse.dreamhost.com:9529' // for production
+const JupyterBridge = 'http://127.0.0.1:9529' // for testing against local Jupyter-bridge
+
+const LocalCytoscape = 'http://localhost:1234'
+const Channel = '1'
 
 function parseURL(url) {
     var reURLInformation = new RegExp([
@@ -67,8 +72,8 @@ function parseURL(url) {
     }
 }
 
-function replyCytoscape(replyStatus, replyText) {
-    const httpR = new XMLHttpRequest();
+const httpR = new XMLHttpRequest();
+function replyCytoscape(replyStatus, replyStatusText, replyText) {
 
     // Clean up after Jupyter bridge accepts reply
     httpR.onreadystatechange = function() {
@@ -77,34 +82,49 @@ function replyCytoscape(replyStatus, replyText) {
         }
     }
 
-    reply = {"status": replyStatus, "text": replyText}
+    reply = {"status": replyStatus, "reason": replyStatusText, "text": replyText}
 
     // Send reply to Jupyter bridge
-    jupyterBridgeURL = 'http://cayuse.dreamhost.com:9529/queue_reply?channel=1'
-    jupyterBridgeURL = 'http://localhost:9529/queue_reply?channel=1'
+    jupyterBridgeURL = JupyterBridge + '/queue_reply?channel=' + Channel
     console.log('Starting queue to Jupyter bridge: ' + jupyterBridgeURL)
     httpR.open('POST', jupyterBridgeURL, true)
     httpR.setRequestHeader('Content-Type', 'text/plain')
     httpR.send(JSON.stringify(reply))
 }
 
+const httpC = new XMLHttpRequest();
 function callCytoscape(callSpec) {
-    const httpC = new XMLHttpRequest();
 
     // Captures Cytoscape reply and sends it on
     httpC.onreadystatechange = function() {
         if (httpC.readyState === 4) {
-            console.log(' status: ' + httpC.status + ', reply: ' + httpC.responseText)
-            replyCytoscape(httpC.status, httpC.responseText)
+            console.log(' status: ' + httpC.status + ', statusText: ' + httpC.statusText + ', reply: ' + httpC.responseText)
+            // Note that httpC.status is 0 if the URL can't be reached *OR* there is a CORS violation.
+            // I wish I could tell the difference because for a CORS violation, I'd return a 404,
+            // which would roughly match what Python's native request package would return.
+            // The practical consequence is that the ultimate caller (e.g., py4cytoscape)
+            // returns different exceptions, depending on wither this module is doing the
+            // HTTP operation or the native Python requests package is. This is minor, but
+            // messes up tests that verify the exception type.
+            replyCytoscape(httpC.status, httpC.statusText, httpC.responseText)
+            waitOnJupyterBridge(false)
         }
     }
 
     // Build up request to Cytoscape, making sure host is local
-    localURL = 'http://localhost:1234' + parseURL(callSpec.url).pathname
+//    localURL = LocalCytoscape + parseURL(callSpec.url).pathname
+    localURL = callSpec.url // Try using what was passed in ... is there a security risk??
 
     console.log('Command: ' + callSpec.command + ' (' + localURL + ')')
+    if (callSpec.params)  {console.log(' params: ' + JSON.stringify(callSpec.params))}
     if (callSpec.headers) {console.log(' header: ' + JSON.stringify(callSpec.headers))}
-    if (callSpec.data) {console.log('   data: ' + JSON.stringify(callSpec.data))}
+    if (callSpec.data)    {console.log('   data: ' + JSON.stringify(callSpec.data))}
+
+    joiner = '?'
+    for (param in callSpec.params) {
+        localURL = localURL + joiner + param + '=' + callSpec.params[param]
+        joiner = '&'
+    }
 
     httpC.open(callSpec.command, localURL, true)
     for (header in callSpec.headers) {
@@ -115,30 +135,42 @@ function callCytoscape(callSpec) {
     httpC.send(JSON.stringify(callSpec.data))
 }
 
-
-function waitOnJupyterBridge() {
-    const httpJ = new XMLHttpRequest()
+const httpJ = new XMLHttpRequest()
+function waitOnJupyterBridge(resetFirst) {
 
     // Captures request from Jupyter bridge
     httpJ.onreadystatechange = function() {
         if (httpJ.readyState === 4) {
             console.log(' status: ' + httpJ.status + ', reply: ' + httpJ.responseText)
-// Consider try: block in case responseText doesn't have JSON
-            callCytoscape(JSON.parse(httpJ.responseText))
+            try {
+                callCytoscape(JSON.parse(httpJ.responseText))
+            } catch(err) {
+                // Bad responseText means client disconnected, so there's no payload.
+                // Go wait on another request, as there's nothing to call Cytoscape with.
+                waitOnJupyterBridge(false)
+            }
         }
     }
 
     // Wait for request from Jupyter bridge
-    jupyterBridgeURL = 'http://cayuse.dreamhost.com:9529/dequeue_request?channel=1'
-    jupyterBridgeURL = 'http://localhost:9529/dequeue_request?channel=1'
+    jupyterBridgeURL = JupyterBridge + '/dequeue_request?channel=' + Channel
+    if (resetFirst) {
+        jupyterBridgeURL = jupyterBridgeURL + '&reset'
+    }
     console.log('Starting dequeue on Jupyter bridge: ' + jupyterBridgeURL)
     httpJ.open('GET', jupyterBridgeURL, true)
     httpJ.send()
 }
-waitOnJupyterBridge()
+
+// This kicks off a loop that ends by calling waitOnJupyterBridge again. This first call
+// ejects any dead readers before we start a read
+waitOnJupyterBridge(true) // Wait for message from Jupyter bridge, execute it, and return reply
 
 /*
-    Test cases for local debugging
+    Test cases for local debugging between this module and Cytoscape,
+    not involving Jupyter-bridge.
+
+    Disable waitOnJupyterBridge call before trying one of these
  */
 
 // const testGET1 = { // expect 200 {"apiVersion": "v1", "cytoscapeVersion": "3.9.0-SNAPSHOT"}
@@ -185,6 +217,9 @@ waitOnJupyterBridge()
 //     "headers": {"Content-Type": "application/json", "Accept": "application/json"},
 // }
 //callCytoscape(testCOMMAND1)
+
+
+
 
 </script>
 

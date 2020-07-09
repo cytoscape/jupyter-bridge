@@ -37,28 +37,32 @@ import time
 
 app = Flask(__name__)
 
-request_map = dict()
-request_map_lock = threading.Lock()
-
-reply_map = dict()
-reply_map_lock = threading.Lock()
-
-channel_status = dict()
 channel_status_lock = threading.Lock()
+channel_status = dict()
 """Structure:
-    request: {q: Queue, message: text, posted_time: time, pickup_wait: time, pickup_time: time}
-    reply:   {q: Queue, message: text, posted_time: time, pickup_wait: time, pickup_time: time}
+    request: {q: Queue, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
+    reply:   {q: Queue, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
 """
+empty_status = {'message': None, 'posted_time': None, 'pickup_wait': None, 'pickup_time': None}
 
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
+
+            # Send new request
             if request.content_type.startswith('application/json'):
                 data = request.get_data()
                 message = json.loads(data.decode('utf-8'))
-                _enqueue(request_map, request_map_lock, 'request', channel, message)
+
+                # Verify that any previous reply has been picked up before trying to send new request
+                reply_status = channel_status[channel]['reply']['status']
+                if not reply_status['posted_time'] is None and reply_status['pickup_time'] is None:
+                    raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
+                channel_status[channel]['reply']['status'] = empty_status.copy()
+
+                _enqueue('request', channel, message)
                 return Response('', status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
@@ -74,7 +78,7 @@ def queue_reply():
             channel = request.args['channel']
             if request.content_type.startswith('text/plain'):
                 message = request.get_data()
-                _enqueue(reply_map, reply_map_lock, 'reply', channel, message)
+                _enqueue('reply', channel, message)
                 return Response('', status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be text/plain')
@@ -88,7 +92,7 @@ def dequeue_request():
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
-            message = _dequeue(request_map, request_map_lock, 'request', channel) # Will block waiting for message
+            message = _dequeue('request', channel, 'reset' in request.args) # Will block waiting for message
             message = json.dumps(message)
             return Response(message, status=200, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
@@ -102,75 +106,92 @@ def dequeue_reply():
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
-            message = _dequeue(reply_map, reply_map_lock, 'reply', channel) # Will block waiting for message
+            message = _dequeue('reply', channel, 'reset' in request.args) # Will block waiting for message
             return Response(message, status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
         return Response(str(e), status=500, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
-
 @app.route('/status', methods=['GET'])
 def status():
-    try:
-        return Response(json.dumps(channel_status), status=200, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
-    except Exception as e:
-        return Response(str(e), status=500, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
+    def return_msg(msg):
+        try:
+            json.dumps(msg) # See if message is real JSON ... if so, leave it be
+        except:
+            msg = str(msg) # Not JSON, so return a string type
+        return msg
 
-def _enqueue(map, lock, operation, channel, msg):
-    lock.acquire()
     try:
         channel_status_lock.acquire()
-        try:
-            if not channel in channel_status: channel_status[channel] = {operation: None}
-            channel_status[channel][operation] = {'post_time': time.asctime(), 'message': msg}
-        except Exception as e:
-            print(f'Error: exception trying to update {operation} channel status "{e}"')
-        finally:
-            channel_status_lock.release()
-
-        if channel in map:
-            q = map[channel]
-            if q.full(): raise Exception(f'Channel {channel} contains unprocessed message')
-        else:
-            q = queue.Queue(1)
-            map[channel] = q
-        q.put(msg)
-    finally:
-        lock.release()
-
-def _dequeue(map, lock, operation, channel):
-    lock.acquire()
-    try:
-        if channel in map:
-            q = map[channel]
-        else:
-            q = queue.Queue(1)
-            map[channel] = q
-    finally:
-        lock.release()
-
-    channel_status_lock.acquire()
-    try:
-        if not channel in channel_status: channel_status[channel] = {operation: None}
-        if q.empty():
-            channel_status[channel][operation] = {'pickup_wait': time.asctime()}
-        else:
-            channel_status[channel][operation]['pickup_wait'] = time.asctime()
+        result = {} # Return the serializable fields, and best effort for message value
+        for channel, channel_rec in channel_status.items():
+            request_status = channel_rec['request']['status']
+            request_status['message'] = return_msg(request_status['message'])
+            reply_status = channel_rec['reply']['status']
+            reply_status['message'] = return_msg(reply_status['message'])
+            result[channel] = {'request': request_status, 'reply': reply_status}
+        return Response(json.dumps(result), status=200, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
     except Exception as e:
-        print(f'Error: exception trying to update {operation} channel status "{e}"')
+        return Response(str(e), status=500, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         channel_status_lock.release()
 
 
 
-    msg = q.get() # Block if no message, and return message and queue empty
+def _enqueue(operation, channel, msg):
+    post, post_status = _verify_channel(channel, operation)
+    try:
+        post['lock'].acquire()
+        if not post['q'].empty():
+            raise Exception(f'Channel {channel} contains unprocessed message')
+        if not post_status['pickup_time'] is None:
+            # Prior message was picked up, so get rid of waiter status
+            post_status['pickup_wait'] = post_status['pickup_time'] = None
+        post_status['posted_time'] = time.asctime()
+        post_status['message'] = msg
+        post['q'].put(msg)
+    finally:
+        post['lock'].release()
 
-    channel_status[channel][operation]['pickup_time'] = time.asctime()
+def _dequeue(operation, channel, reset_first):
+    pickup, pickup_status = _verify_channel(channel, operation)
+    try:
+        pickup['lock'].acquire()
+        if reset_first: # Clear out any (presumably dead) reader
+            pickup['q'].put('dying breath') # Satisfy outstanding (dead?) reader
+            pickup['q'] = queue.Queue(1) # Make double-sure queue is clean
+        pickup_status['pickup_wait'] = time.asctime()
+        pickup_status['pickup_time'] = None
+        if pickup['q'].empty(): # clear out already-read message
+            pickup_status['message'] = None
+            pickup_status['posted_time'] = None
+    finally:
+        pickup['lock'].release()
+
+    msg = pickup['q'].get() # Block if no message, and return message and queue empty
+
+    try:
+        pickup['lock'].acquire()
+        # Don't erase pickup_wait here because it can be useful to see how long a response took
+        pickup_status['pickup_time'] = time.asctime()
+    finally:
+        pickup['lock'].release()
+
     return msg
 
+def _verify_channel(channel, operation):
+    try:
+        channel_status_lock.acquire()
+        if not channel in channel_status:
+            channel_status[channel] = {'request': {'q': queue.Queue(1), 'lock': threading.Lock(), 'status': empty_status.copy()},
+                                       'reply'  : {'q': queue.Queue(1), 'lock': threading.Lock(), 'status': empty_status.copy()}}
+    finally:
+        channel_status_lock.release()
 
+    return channel_status[channel][operation], \
+           channel_status[channel][operation]['status']
 
 if __name__=='__main__':
     if len(sys.argv) > 1:
