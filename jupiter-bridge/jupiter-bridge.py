@@ -63,13 +63,13 @@ def queue_request():
                 channel_status[channel]['reply']['status'] = empty_status.copy()
 
                 _enqueue('request', channel, message)
-                return Response('', status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+                return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, mimetype='text/plain')
+        return Response(str(e), status=500, content_type='text/plain')
 
 @app.route('/queue_reply', methods=['POST'])
 def queue_reply():
@@ -79,13 +79,13 @@ def queue_reply():
             if request.content_type.startswith('text/plain'):
                 message = request.get_data()
                 _enqueue('reply', channel, message)
-                return Response('', status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+                return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be text/plain')
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, mimetype='text/plain')
+        return Response(str(e), status=500, content_type='text/plain')
 
 @app.route('/dequeue_request', methods=['GET'])
 def dequeue_request():
@@ -94,11 +94,11 @@ def dequeue_request():
             channel = request.args['channel']
             message = _dequeue('request', channel, 'reset' in request.args) # Will block waiting for message
             message = json.dumps(message)
-            return Response(message, status=200, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
+            return Response(message, status=200, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, mimetype='text/plain')
+        return Response(str(e), status=500, content_type='text/plain')
 
 
 @app.route('/dequeue_reply', methods=['GET'])
@@ -107,11 +107,17 @@ def dequeue_reply():
         if 'channel' in request.args:
             channel = request.args['channel']
             message = _dequeue('reply', channel, 'reset' in request.args) # Will block waiting for message
-            return Response(message, status=200, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+            # Setting content_type because using mime_type would add a charset, which we want
+            # to defer to ultimate client.
+            # Setting application/json to avoid ultimate client assuming charset is 'ISO-8859-1'
+            # We want charset to be whatever is local to the client.
+            # TODO: This should probably be passed up from the javascript layer that got it from
+            # cyREST.
+            return Response(message, status=200, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
 @app.route('/status', methods=['GET'])
 def status():
@@ -134,7 +140,7 @@ def status():
             result[channel] = {'request': request_status, 'reply': reply_status}
         return Response(json.dumps(result), status=200, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
     except Exception as e:
-        return Response(str(e), status=500, mimetype='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         channel_status_lock.release()
 
@@ -197,7 +203,7 @@ if __name__=='__main__':
     if len(sys.argv) > 1:
         host_ip = sys.argv[1]
     else:
-        host_ip = 'localhost'
+        host_ip = '127.0.0.1'
     if len(sys.argv) > 2:
         port = sys.argv[2]
     else:

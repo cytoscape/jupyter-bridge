@@ -48,7 +48,7 @@
 // const JupyterBridge = 'http://cayuse.dreamhost.com:9529' // for production
 const JupyterBridge = 'http://127.0.0.1:9529' // for testing against local Jupyter-bridge
 
-const LocalCytoscape = 'http://localhost:1234'
+const LocalCytoscape = 'http://127.0.0.1:1234'
 const Channel = '1'
 
 function parseURL(url) {
@@ -72,21 +72,27 @@ function parseURL(url) {
     }
 }
 
+var showDebug = false
+
 const httpR = new XMLHttpRequest();
 function replyCytoscape(replyStatus, replyStatusText, replyText) {
 
     // Clean up after Jupyter bridge accepts reply
     httpR.onreadystatechange = function() {
         if (httpR.readyState === 4) {
-            console.log(' status: ' + httpR.status + ', reply: ' + httpR.responseText)
+            if (showDebug) {
+                console.log(' status: ' + httpR.status + ', reply: ' + httpR.responseText)
+            }
         }
     }
 
-    reply = {"status": replyStatus, "reason": replyStatusText, "text": replyText}
+    reply = {'status': replyStatus, 'reason': replyStatusText, 'text': replyText}
 
     // Send reply to Jupyter bridge
     jupyterBridgeURL = JupyterBridge + '/queue_reply?channel=' + Channel
-    console.log('Starting queue to Jupyter bridge: ' + jupyterBridgeURL)
+    if (showDebug) {
+        console.log('Starting queue to Jupyter bridge: ' + jupyterBridgeURL)
+    }
     httpR.open('POST', jupyterBridgeURL, true)
     httpR.setRequestHeader('Content-Type', 'text/plain')
     httpR.send(JSON.stringify(reply))
@@ -98,7 +104,9 @@ function callCytoscape(callSpec) {
     // Captures Cytoscape reply and sends it on
     httpC.onreadystatechange = function() {
         if (httpC.readyState === 4) {
-            console.log(' status: ' + httpC.status + ', statusText: ' + httpC.statusText + ', reply: ' + httpC.responseText)
+            if (showDebug) {
+                console.log(' status: ' + httpC.status + ', statusText: ' + httpC.statusText + ', reply: ' + httpC.responseText)
+            }
             // Note that httpC.status is 0 if the URL can't be reached *OR* there is a CORS violation.
             // I wish I could tell the difference because for a CORS violation, I'd return a 404,
             // which would roughly match what Python's native request package would return.
@@ -112,17 +120,25 @@ function callCytoscape(callSpec) {
     }
 
     // Build up request to Cytoscape, making sure host is local
-//    localURL = LocalCytoscape + parseURL(callSpec.url).pathname
+//    too heavy handed: localURL = LocalCytoscape + parseURL(callSpec.url).pathname
     localURL = callSpec.url // Try using what was passed in ... is there a security risk??
 
-    console.log('Command: ' + callSpec.command + ' (' + localURL + ')')
-    if (callSpec.params)  {console.log(' params: ' + JSON.stringify(callSpec.params))}
-    if (callSpec.headers) {console.log(' header: ' + JSON.stringify(callSpec.headers))}
-    if (callSpec.data)    {console.log('   data: ' + JSON.stringify(callSpec.data))}
+    if (showDebug) {
+        console.log('Command: ' + callSpec.command + ' (' + localURL + ')')
+        if (callSpec.params) {
+            console.log(' params: ' + JSON.stringify(callSpec.params))
+        }
+        if (callSpec.headers) {
+            console.log(' header: ' + JSON.stringify(callSpec.headers))
+        }
+        if (callSpec.data) {
+            console.log('   data: ' + JSON.stringify(callSpec.data))
+        }
+    }
 
     joiner = '?'
     for (param in callSpec.params) {
-        localURL = localURL + joiner + param + '=' + callSpec.params[param]
+        localURL = localURL + joiner + param + '=' + encodeURIComponent(callSpec.params[param])
         joiner = '&'
     }
 
@@ -141,7 +157,9 @@ function waitOnJupyterBridge(resetFirst) {
     // Captures request from Jupyter bridge
     httpJ.onreadystatechange = function() {
         if (httpJ.readyState === 4) {
-            console.log(' status: ' + httpJ.status + ', reply: ' + httpJ.responseText)
+            if (showDebug) {
+                console.log(' status: ' + httpJ.status + ', reply: ' + httpJ.responseText)
+            }
             try {
                 callCytoscape(JSON.parse(httpJ.responseText))
             } catch(err) {
@@ -157,7 +175,9 @@ function waitOnJupyterBridge(resetFirst) {
     if (resetFirst) {
         jupyterBridgeURL = jupyterBridgeURL + '&reset'
     }
-    console.log('Starting dequeue on Jupyter bridge: ' + jupyterBridgeURL)
+    if (showDebug) {
+        console.log('Starting dequeue on Jupyter bridge: ' + jupyterBridgeURL)
+    }
     httpJ.open('GET', jupyterBridgeURL, true)
     httpJ.send()
 }
