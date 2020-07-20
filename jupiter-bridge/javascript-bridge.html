@@ -45,7 +45,7 @@
 
      */
 
-// const JupyterBridge = 'http://cayuse.dreamhost.com:9529' // for production
+//const JupyterBridge = 'http://192.168.2.194:9529' // for production
 const JupyterBridge = 'http://127.0.0.1:9529' // for testing against local Jupyter-bridge
 
 const LocalCytoscape = 'http://127.0.0.1:1234'
@@ -72,7 +72,7 @@ function parseURL(url) {
     }
 }
 
-var showDebug = false
+var showDebug = true
 
 const httpR = new XMLHttpRequest();
 function replyCytoscape(replyStatus, replyStatusText, replyText) {

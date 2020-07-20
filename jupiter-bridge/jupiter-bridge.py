@@ -44,6 +44,8 @@ channel_status = dict()
     reply:   {q: Queue, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
 """
 empty_status = {'message': None, 'posted_time': None, 'pickup_wait': None, 'pickup_time': None}
+debug_option = 'dbg_none'
+
 
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
@@ -148,6 +150,8 @@ def status():
 
 def _enqueue(operation, channel, msg):
     post, post_status = _verify_channel(channel, operation)
+    if debug_option == 'dbg_msg':
+        print(f' enqueue: {operation}, channel: {channel}, msg: {msg}')
     try:
         post['lock'].acquire()
         if not post['q'].empty():
@@ -177,6 +181,8 @@ def _dequeue(operation, channel, reset_first):
         pickup['lock'].release()
 
     msg = pickup['q'].get() # Block if no message, and return message and queue empty
+    if debug_option == 'dbg_msg':
+        print(f' dequeue: {operation}, channel: {channel}, msg: {msg}')
 
     try:
         pickup['lock'].acquire()
@@ -208,4 +214,6 @@ if __name__=='__main__':
         port = sys.argv[2]
     else:
         port = 9529
+    if len(sys.argv) > 3:
+        debug_option = sys.argv[3]
     app.run(debug=True, host=host_ip, port=port)
