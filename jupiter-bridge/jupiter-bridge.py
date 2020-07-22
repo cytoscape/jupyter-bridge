@@ -46,6 +46,8 @@ channel_status = dict()
 empty_status = {'message': None, 'posted_time': None, 'pickup_wait': None, 'pickup_time': None}
 debug_option = 'dbg_none'
 
+PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
+
 
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
@@ -71,7 +73,7 @@ def queue_request():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, content_type='text/plain')
+        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
 @app.route('/queue_reply', methods=['POST'])
 def queue_reply():
@@ -87,7 +89,7 @@ def queue_reply():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, content_type='text/plain')
+        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
 @app.route('/dequeue_request', methods=['GET'])
 def dequeue_request():
@@ -96,11 +98,12 @@ def dequeue_request():
             channel = request.args['channel']
             message = _dequeue('request', channel, 'reset' in request.args) # Will block waiting for message
             message = json.dumps(message)
+            if PAD_MESSAGE: message += ' '*1500
             return Response(message, status=200, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, content_type='text/plain')
+        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
 
 @app.route('/dequeue_reply', methods=['GET'])
@@ -115,6 +118,9 @@ def dequeue_reply():
             # We want charset to be whatever is local to the client.
             # TODO: This should probably be passed up from the javascript layer that got it from
             # cyREST.
+            if PAD_MESSAGE:
+                if isinstance(message, str): message += ' '*1500
+                elif isinstance(message, bytes): message += (' '*1500).encode('ascii')
             return Response(message, status=200, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
