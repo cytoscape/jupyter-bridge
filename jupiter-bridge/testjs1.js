@@ -232,4 +232,4 @@ waitOnJupyterBridge(true) // Wait for message from Jupyter bridge, execute it, a
 // }
 //callCytoscape(testCOMMAND1)
 
-alert("hi from github end")
+alert("hi from github end " + JupyterBridge)
