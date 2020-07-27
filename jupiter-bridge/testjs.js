@@ -79,10 +79,10 @@ function replyCytoscape(replyStatus, replyStatusText, replyText) {
         }
     }
 
-    reply = {'status': replyStatus, 'reason': replyStatusText, 'text': replyText}
+    var reply = {'status': replyStatus, 'reason': replyStatusText, 'text': replyText}
 
     // Send reply to Jupyter bridge
-    jupyterBridgeURL = JupyterBridge + '/queue_reply?channel=' + Channel
+    var jupyterBridgeURL = JupyterBridge + '/queue_reply?channel=' + Channel
     if (showDebug) {
         console.log('Starting queue to Jupyter bridge: ' + jupyterBridgeURL)
     }
@@ -114,7 +114,7 @@ function callCytoscape(callSpec) {
 
     // Build up request to Cytoscape, making sure host is local
 //    too heavy handed: localURL = LocalCytoscape + parseURL(callSpec.url).pathname
-    localURL = callSpec.url // Try using what was passed in ... is there a security risk??
+    var localURL = callSpec.url // Try using what was passed in ... is there a security risk??
 
     if (showDebug) {
         console.log('Command: ' + callSpec.command + ' (' + localURL + ')')
@@ -129,7 +129,7 @@ function callCytoscape(callSpec) {
         }
     }
 
-    joiner = '?'
+    var joiner = '?'
     for (param in callSpec.params) {
         localURL = localURL + joiner + param + '=' + encodeURIComponent(callSpec.params[param])
         joiner = '&'
@@ -164,7 +164,7 @@ function waitOnJupyterBridge(resetFirst) {
     }
 
     // Wait for request from Jupyter bridge
-    jupyterBridgeURL = JupyterBridge + '/dequeue_request?channel=' + Channel
+    var jupyterBridgeURL = JupyterBridge + '/dequeue_request?channel=' + Channel
     if (resetFirst) {
         jupyterBridgeURL = jupyterBridgeURL + '&reset'
     }
