@@ -39,7 +39,8 @@ alert("hi from github start")
      */
 
 //const JupyterBridge = 'http://192.168.2.194:9529' // for production
-const JupyterBridge = 'http://127.0.0.1:9529' // for testing against local Jupyter-bridge
+//const JupyterBridge = 'http://127.0.0.1:9529' // for testing against local Jupyter-bridge
+const JupyterBridge = 'http://70.95.64.191:9529' // for production
 
 const LocalCytoscape = 'http://127.0.0.1:1234'
 const Channel = '1'
