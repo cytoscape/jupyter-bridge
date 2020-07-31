@@ -132,7 +132,6 @@ def dequeue_reply():
     except Exception as e:
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
-"""
 @app.route('/status', methods=['GET'])
 def status():
 
@@ -157,7 +156,7 @@ def status():
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         channel_status_lock.release()
-
+"""
 
 
 def _enqueue(operation, channel, msg):
