@@ -63,12 +63,12 @@ def queue_request():
 
                 # Verify that any previous reply has been picked up before trying to send new request
                 return Response('zOKz', status=200)
-                reply_status = channel_status[channel]['reply']['status']
-
-
-                if not reply_status['posted_time'] is None and reply_status['pickup_time'] is None:
-                    raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
-                channel_status[channel]['reply']['status'] = empty_status.copy()
+                # reply_status = channel_status[channel]['reply']['status']
+                #
+                #
+                # if not reply_status['posted_time'] is None and reply_status['pickup_time'] is None:
+                #     raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
+                # channel_status[channel]['reply']['status'] = empty_status.copy()
 
 #                _enqueue('request', channel, message)
                 return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
