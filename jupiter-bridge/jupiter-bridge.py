@@ -59,9 +59,9 @@ def queue_request():
             # Send new request
             if request.content_type.startswith('application/json'):
                 data = request.get_data()
-#                message = json.loads(data.decode('utf-8'))
-                message = {}
+                message = json.loads(data.decode('utf-8'))
 
+                return Response('zOKz', status=200)
 
                 # Verify that any previous reply has been picked up before trying to send new request
                 reply_status = channel_status[channel]['reply']['status']
@@ -70,7 +70,6 @@ def queue_request():
                 channel_status[channel]['reply']['status'] = empty_status.copy()
 
 #                _enqueue('request', channel, message)
-                return Response('zOKz', status=200)
                 return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
