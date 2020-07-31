@@ -34,9 +34,20 @@ import json
 import threading
 import queue
 import time
+import logging
+from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
+
+# Set up detail logger
+logger = logging.getLogger('jupyter-bridge')
+logger_handler = RotatingFileHandler('jupyter-bridge.log', maxBytes=1048576, backupCount=10, encoding='utf8')
+logger_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+logger.setLevel('DEBUG')
+logger.addHandler(logger_handler)
+
+# Set up bridge data structures
 channel_status_lock = threading.Lock()
 channel_status = dict()
 """Structure:
@@ -51,7 +62,7 @@ PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses hea
 
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
-
+    logger.debug('into queue_request')
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
@@ -69,15 +80,19 @@ def queue_request():
                 #     raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
                 # channel_status[channel]['reply']['status'] = empty_status.copy()
 
+                logger.debug('calling _enqueue')
                 _enqueue('request', channel, message)
+                logger.debug('calling _enqueue')
                 return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response('wOKw', status=201)
+        logger.debug('Exception: ' + str(e))
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+    finally:
+        logger.debug('leaving queue_request')
 
 """
 @app.route('/queue_reply', methods=['POST'])
