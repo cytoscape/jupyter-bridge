@@ -158,9 +158,9 @@ def status():
 
 
 def _enqueue(operation, channel, msg):
-    post, post_status = _verify_channel(channel, operation)
-    if debug_option == 'dbg_msg':
-        print(f' enqueue: {operation}, channel: {channel}, msg: {msg}')
+    # post, post_status = _verify_channel(channel, operation)
+    # if debug_option == 'dbg_msg':
+    #     print(f' enqueue: {operation}, channel: {channel}, msg: {msg}')
     # try:
     #     post['lock'].acquire()
     #     if not post['q'].empty():
