@@ -112,8 +112,8 @@ def dequeue_request():
 
 @app.route('/dequeue_reply', methods=['GET'])
 def dequeue_reply():
+    return Response('yOKy', status=200)
     try:
-        return Response('yOKy', status=200)
         if 'channel' in request.args:
             channel = request.args['channel']
             message = _dequeue('reply', channel, 'reset' in request.args) # Will block waiting for message
@@ -131,6 +131,7 @@ def dequeue_reply():
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+
 """
 @app.route('/status', methods=['GET'])
 def status():
