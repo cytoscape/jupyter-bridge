@@ -161,18 +161,18 @@ def _enqueue(operation, channel, msg):
     post, post_status = _verify_channel(channel, operation)
     if debug_option == 'dbg_msg':
         print(f' enqueue: {operation}, channel: {channel}, msg: {msg}')
-    try:
-        post['lock'].acquire()
-        if not post['q'].empty():
-            raise Exception(f'Channel {channel} contains unprocessed message')
-        if not post_status['pickup_time'] is None:
-            # Prior message was picked up, so get rid of waiter status
-            post_status['pickup_wait'] = post_status['pickup_time'] = None
-        post_status['posted_time'] = time.asctime()
-        post_status['message'] = msg
-        post['q'].put(msg)
-    finally:
-        post['lock'].release()
+    # try:
+    #     post['lock'].acquire()
+    #     if not post['q'].empty():
+    #         raise Exception(f'Channel {channel} contains unprocessed message')
+    #     if not post_status['pickup_time'] is None:
+    #         # Prior message was picked up, so get rid of waiter status
+    #         post_status['pickup_wait'] = post_status['pickup_time'] = None
+    #     post_status['posted_time'] = time.asctime()
+    #     post_status['message'] = msg
+    #     post['q'].put(msg)
+    # finally:
+    #     post['lock'].release()
 
 def _dequeue(operation, channel, reset_first):
     pickup, pickup_status = _verify_channel(channel, operation)
