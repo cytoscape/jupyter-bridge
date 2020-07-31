@@ -127,6 +127,7 @@ def dequeue_request():
 
 @app.route('/dequeue_reply', methods=['GET'])
 def dequeue_reply():
+    logger.debug('into dequeue_reply')
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
@@ -145,6 +146,8 @@ def dequeue_reply():
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+    finally:
+        logger.debug('out of dequeue_reply')
 
 @app.route('/status', methods=['GET'])
 def status():
@@ -190,6 +193,7 @@ def _enqueue(operation, channel, msg):
         logger.debug('out of _enqueue')
 
 def _dequeue(operation, channel, reset_first):
+    logger.debug(f'into _dequeue: {operation}, channel: {channel}, reset_first: {reset_first}')
     pickup, pickup_status = _verify_channel(channel, operation)
     try:
         pickup['lock'].acquire()
@@ -205,8 +209,7 @@ def _dequeue(operation, channel, reset_first):
         pickup['lock'].release()
 
     msg = pickup['q'].get() # Block if no message, and return message and queue empty
-    if debug_option == 'dbg_msg':
-        print(f' dequeue: {operation}, channel: {channel}, msg: {msg}')
+    logger.debug(f' dequeued: {operation}, channel: {channel}, msg: {msg}')
 
     try:
         pickup['lock'].acquire()
@@ -214,6 +217,7 @@ def _dequeue(operation, channel, reset_first):
         pickup_status['pickup_time'] = time.asctime()
     finally:
         pickup['lock'].release()
+        logger.debug('out of _dequeue')
 
     return msg
 
