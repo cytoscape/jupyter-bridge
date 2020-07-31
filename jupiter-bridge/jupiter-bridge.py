@@ -61,10 +61,10 @@ def queue_request():
                 data = request.get_data()
                 message = json.loads(data.decode('utf-8'))
 
-                return Response('zOKz', status=200)
-
                 # Verify that any previous reply has been picked up before trying to send new request
                 reply_status = channel_status[channel]['reply']['status']
+                return Response('zOKz', status=200)
+
                 if not reply_status['posted_time'] is None and reply_status['pickup_time'] is None:
                     raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
                 channel_status[channel]['reply']['status'] = empty_status.copy()
@@ -76,6 +76,7 @@ def queue_request():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
+        return Response('wOKw', status=201)
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
 """
