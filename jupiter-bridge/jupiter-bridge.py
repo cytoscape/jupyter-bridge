@@ -52,8 +52,7 @@ PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses hea
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
     try:
-        return Response('xOKx', status=200)
-        """
+#        return Response('xOKx', status=200)
         if 'channel' in request.args:
             channel = request.args['channel']
 
@@ -74,7 +73,6 @@ def queue_request():
                 raise Exception('Payload must be application/json')
         else:
             raise Exception('Channel is missing in parameter list')
-        """
     except Exception as e:
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
