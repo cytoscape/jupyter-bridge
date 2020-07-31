@@ -62,7 +62,7 @@ def queue_request():
                 message = json.loads(data.decode('utf-8'))
 
                 # Verify that any previous reply has been picked up before trying to send new request
-                return Response('zOKz', status=200)
+#                return Response('zOKz', status=200)
                 # reply_status = channel_status[channel]['reply']['status']
                 #
                 #
