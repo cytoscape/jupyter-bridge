@@ -212,14 +212,15 @@ def _verify_channel(channel, operation):
            channel_status[channel][operation]['status']
 
 if __name__=='__main__':
-    if len(sys.argv) > 1:
-        host_ip = sys.argv[1]
-    else:
-        host_ip = '127.0.0.1'
-    if len(sys.argv) > 2:
-        port = sys.argv[2]
-    else:
-        port = 9529
-    if len(sys.argv) > 3:
-        debug_option = sys.argv[3]
-    app.run(debug=True, host=host_ip, port=port)
+    app.run(host='0.0.0.0')
+    # if len(sys.argv) > 1:
+    #     host_ip = sys.argv[1]
+    # else:
+    #     host_ip = '127.0.0.1'
+    # if len(sys.argv) > 2:
+    #     port = sys.argv[2]
+    # else:
+    #     port = 9529
+    # if len(sys.argv) > 3:
+    #     debug_option = sys.argv[3]
+    # app.run(debug=True, host=host_ip, port=port)
