@@ -80,19 +80,18 @@ def queue_request():
                 #     raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
                 # channel_status[channel]['reply']['status'] = empty_status.copy()
 
-                logger.debug('calling _enqueue')
                 _enqueue('request', channel, message)
-                logger.debug('calling _enqueue')
                 return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        logger.debug('Exception: ' + str(e))
-        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        logger.debug(f"queue_request exception {e!r}")
+        e_message = e.response.text if e.response and e.response.text else ''
+        return Response(e_message, status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
-        logger.debug('leaving queue_request')
+        logger.debug('out of queue_request')
 
 """
 @app.route('/queue_reply', methods=['POST'])
@@ -174,9 +173,8 @@ def status():
 
 
 def _enqueue(operation, channel, msg):
+    logger.debug(f'into _enqueue: {operation}, channel: {channel}, msg: {msg}')
     post, post_status = _verify_channel(channel, operation)
-    if debug_option == 'dbg_msg':
-        print(f' enqueue: {operation}, channel: {channel}, msg: {msg}')
     try:
         post['lock'].acquire()
         if not post['q'].empty():
@@ -189,6 +187,7 @@ def _enqueue(operation, channel, msg):
         post['q'].put(msg)
     finally:
         post['lock'].release()
+        logger.debug('out of _enqueue')
 
 def _dequeue(operation, channel, reset_first):
     pickup, pickup_status = _verify_channel(channel, operation)
