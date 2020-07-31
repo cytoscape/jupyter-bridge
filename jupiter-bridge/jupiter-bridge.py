@@ -52,31 +52,31 @@ PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses hea
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
     return Response('zOKz', status=200)
-    # try:
-    #     if 'channel' in request.args:
-    #         channel = request.args['channel']
-    #
-    #         # Send new request
-    #         if request.content_type.startswith('application/json'):
-    #             data = request.get_data()
-    #             message = json.loads(data.decode('utf-8'))
-    #
-    #
-    #             # Verify that any previous reply has been picked up before trying to send new request
-    #             reply_status = channel_status[channel]['reply']['status']
-    #             if not reply_status['posted_time'] is None and reply_status['pickup_time'] is None:
-    #                 raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
-    #             channel_status[channel]['reply']['status'] = empty_status.copy()
-    #
-    #             _enqueue('request', channel, message)
-    #
-    #             return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
-    #         else:
-    #             raise Exception('Payload must be application/json')
-    #     else:
-    #         raise Exception('Channel is missing in parameter list')
-    # except Exception as e:
-    #     return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+    try:
+        if 'channel' in request.args:
+            channel = request.args['channel']
+
+            # Send new request
+            if request.content_type.startswith('application/json'):
+                data = request.get_data()
+                message = json.loads(data.decode('utf-8'))
+
+
+                # Verify that any previous reply has been picked up before trying to send new request
+                reply_status = channel_status[channel]['reply']['status']
+                if not reply_status['posted_time'] is None and reply_status['pickup_time'] is None:
+                    raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
+                channel_status[channel]['reply']['status'] = empty_status.copy()
+
+#                _enqueue('request', channel, message)
+
+                return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+            else:
+                raise Exception('Payload must be application/json')
+        else:
+            raise Exception('Channel is missing in parameter list')
+    except Exception as e:
+        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
 
 """
 @app.route('/queue_reply', methods=['POST'])
