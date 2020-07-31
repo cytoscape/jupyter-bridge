@@ -156,7 +156,6 @@ def status():
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         channel_status_lock.release()
-"""
 
 
 def _enqueue(operation, channel, msg):
@@ -215,7 +214,6 @@ def _verify_channel(channel, operation):
 
     return channel_status[channel][operation], \
            channel_status[channel][operation]['status']
-"""
 
 if __name__=='__main__':
     app.run(host='0.0.0.0')
