@@ -113,7 +113,6 @@ def dequeue_request():
 
 @app.route('/dequeue_reply', methods=['GET'])
 def dequeue_reply():
-    return Response('yOKy', status=200)
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
