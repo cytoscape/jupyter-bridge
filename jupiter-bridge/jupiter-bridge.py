@@ -52,7 +52,6 @@ PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses hea
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
     try:
-#        return Response('xOKx', status=200)
         if 'channel' in request.args:
             channel = request.args['channel']
 
@@ -60,6 +59,7 @@ def queue_request():
             if request.content_type.startswith('application/json'):
                 data = request.get_data()
                 message = json.loads(data.decode('utf-8'))
+                return Response('zOKz', status=200)
 
                 # Verify that any previous reply has been picked up before trying to send new request
                 reply_status = channel_status[channel]['reply']['status']
