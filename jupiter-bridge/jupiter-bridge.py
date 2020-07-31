@@ -62,7 +62,6 @@ def queue_request():
                 message = json.loads(data.decode('utf-8'))
 
                 # Verify that any previous reply has been picked up before trying to send new request
-#                return Response('zOKz', status=200)
                 # reply_status = channel_status[channel]['reply']['status']
                 #
                 #
@@ -70,7 +69,7 @@ def queue_request():
                 #     raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
                 # channel_status[channel]['reply']['status'] = empty_status.copy()
 
-#                _enqueue('request', channel, message)
+                _enqueue('request', channel, message)
                 return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
@@ -160,62 +159,62 @@ def status():
         channel_status_lock.release()
 
 
-#def _enqueue(operation, channel, msg):
-    # post, post_status = _verify_channel(channel, operation)
-    # if debug_option == 'dbg_msg':
-    #     print(f' enqueue: {operation}, channel: {channel}, msg: {msg}')
-    # try:
-    #     post['lock'].acquire()
-    #     if not post['q'].empty():
-    #         raise Exception(f'Channel {channel} contains unprocessed message')
-    #     if not post_status['pickup_time'] is None:
-    #         # Prior message was picked up, so get rid of waiter status
-    #         post_status['pickup_wait'] = post_status['pickup_time'] = None
-    #     post_status['posted_time'] = time.asctime()
-    #     post_status['message'] = msg
-    #     post['q'].put(msg)
-    # finally:
-    #     post['lock'].release()
+def _enqueue(operation, channel, msg):
+    post, post_status = _verify_channel(channel, operation)
+    if debug_option == 'dbg_msg':
+        print(f' enqueue: {operation}, channel: {channel}, msg: {msg}')
+    try:
+        post['lock'].acquire()
+        if not post['q'].empty():
+            raise Exception(f'Channel {channel} contains unprocessed message')
+        if not post_status['pickup_time'] is None:
+            # Prior message was picked up, so get rid of waiter status
+            post_status['pickup_wait'] = post_status['pickup_time'] = None
+        post_status['posted_time'] = time.asctime()
+        post_status['message'] = msg
+        post['q'].put(msg)
+    finally:
+        post['lock'].release()
 
-# def _dequeue(operation, channel, reset_first):
-#     pickup, pickup_status = _verify_channel(channel, operation)
-#     try:
-#         pickup['lock'].acquire()
-#         if reset_first: # Clear out any (presumably dead) reader
-#             pickup['q'].put('dying breath') # Satisfy outstanding (dead?) reader
-#             pickup['q'] = queue.Queue(1) # Make double-sure queue is clean
-#         pickup_status['pickup_wait'] = time.asctime()
-#         pickup_status['pickup_time'] = None
-#         if pickup['q'].empty(): # clear out already-read message
-#             pickup_status['message'] = None
-#             pickup_status['posted_time'] = None
-#     finally:
-#         pickup['lock'].release()
-#
-#     msg = pickup['q'].get() # Block if no message, and return message and queue empty
-#     if debug_option == 'dbg_msg':
-#         print(f' dequeue: {operation}, channel: {channel}, msg: {msg}')
-#
-#     try:
-#         pickup['lock'].acquire()
-#         # Don't erase pickup_wait here because it can be useful to see how long a response took
-#         pickup_status['pickup_time'] = time.asctime()
-#     finally:
-#         pickup['lock'].release()
-#
-#     return msg
-#
-# def _verify_channel(channel, operation):
-#     try:
-#         channel_status_lock.acquire()
-#         if not channel in channel_status:
-#             channel_status[channel] = {'request': {'q': queue.Queue(1), 'lock': threading.Lock(), 'status': empty_status.copy()},
-#                                        'reply'  : {'q': queue.Queue(1), 'lock': threading.Lock(), 'status': empty_status.copy()}}
-#     finally:
-#         channel_status_lock.release()
-#
-#     return channel_status[channel][operation], \
-#            channel_status[channel][operation]['status']
+def _dequeue(operation, channel, reset_first):
+    pickup, pickup_status = _verify_channel(channel, operation)
+    try:
+        pickup['lock'].acquire()
+        if reset_first: # Clear out any (presumably dead) reader
+            pickup['q'].put('dying breath') # Satisfy outstanding (dead?) reader
+            pickup['q'] = queue.Queue(1) # Make double-sure queue is clean
+        pickup_status['pickup_wait'] = time.asctime()
+        pickup_status['pickup_time'] = None
+        if pickup['q'].empty(): # clear out already-read message
+            pickup_status['message'] = None
+            pickup_status['posted_time'] = None
+    finally:
+        pickup['lock'].release()
+
+    msg = pickup['q'].get() # Block if no message, and return message and queue empty
+    if debug_option == 'dbg_msg':
+        print(f' dequeue: {operation}, channel: {channel}, msg: {msg}')
+
+    try:
+        pickup['lock'].acquire()
+        # Don't erase pickup_wait here because it can be useful to see how long a response took
+        pickup_status['pickup_time'] = time.asctime()
+    finally:
+        pickup['lock'].release()
+
+    return msg
+
+def _verify_channel(channel, operation):
+    try:
+        channel_status_lock.acquire()
+        if not channel in channel_status:
+            channel_status[channel] = {'request': {'q': queue.Queue(1), 'lock': threading.Lock(), 'status': empty_status.copy()},
+                                       'reply'  : {'q': queue.Queue(1), 'lock': threading.Lock(), 'status': empty_status.copy()}}
+    finally:
+        channel_status_lock.release()
+
+    return channel_status[channel][operation], \
+           channel_status[channel][operation]['status']
 
 if __name__=='__main__':
     app.run(host='0.0.0.0')
