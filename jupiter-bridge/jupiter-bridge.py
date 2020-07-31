@@ -59,7 +59,8 @@ def queue_request():
             # Send new request
             if request.content_type.startswith('application/json'):
                 data = request.get_data()
-                message = json.loads(data.decode('utf-8'))
+#                message = json.loads(data.decode('utf-8'))
+                message = {}
 
 
                 # Verify that any previous reply has been picked up before trying to send new request
