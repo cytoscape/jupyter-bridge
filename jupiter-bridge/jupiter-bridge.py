@@ -62,8 +62,9 @@ def queue_request():
                 message = json.loads(data.decode('utf-8'))
 
                 # Verify that any previous reply has been picked up before trying to send new request
-                reply_status = channel_status[channel]['reply']['status']
                 return Response('zOKz', status=200)
+                reply_status = channel_status[channel]['reply']['status']
+
 
                 if not reply_status['posted_time'] is None and reply_status['pickup_time'] is None:
                     raise Exception(f'Reply not picked up before new request, reply: ' + str(reply_status['message']) + ', request: ' + str(message))
