@@ -57,6 +57,7 @@ channel_status = dict()
 empty_status = {'message': None, 'posted_time': None, 'pickup_wait': None, 'pickup_time': None}
 
 PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
+DEQUEUE_TIMEOUT_SECS = 15 # Something less that connection timeout, but long enough not to cause caller to create a dequeue blizzard
 
 
 @app.route('/queue_request', methods=['POST'])
@@ -114,6 +115,31 @@ def queue_reply():
         logger.debug('out of queue_reply')
 
 @app.route('/dequeue_request', methods=['GET'])
+# There is a problem with dequeue_request. Suppose that a client executes this. It's
+# waiting for something in the queue, and when a message shows up, it grabs the message, and
+# the message is returned. That's the way it's supposed to work. Suppose, though, that a message
+# doesn't appear for a long time and the client is waiting for a long time. The web server may
+# kill the connection because of the timeout. This service keeps waiting, though, and when
+# it finally gets a request, it returns it on an HTTP connection that no longer has a listener.
+# It doesn't help that the client re-starts the service call because by then, the message has
+# disappeared. A variant of this is that the client re-starts the service several times, which
+# causes the next several messages to disappear because their connection go severed, too.
+#
+# There are a few ways around this.
+# 1) Turn this service into a poll ... where the message is returned if there is one, and
+#    an error is returned if there is no message. This would avoid the connection termination
+#    problem, which is a problem no matter how long the server connection timeout is set. The
+#    downside to this is that the client has to periodically re-poll, which adds traffic.
+# 2) Re-queue the message immediately after it's de-queued, and then create another service
+#    that kills the re-queued message. This adds complexity to this protocol, but it allows
+#    the client to wait until the connection is killed before re-starting the service. Note
+#    that a Queue is used to hold request messages, as if it's possible to have several
+#    outstanding requests at the same time. This is misleading, as our protocol requires
+#    that a requestor do nothing except post the request and await a reply.
+# 3) A variant of #1 is to allow the poll to linger for a number of seconds before returning
+#    an error. This cuts down on the re-polling traffic and improves responsiveness. This may be
+#    best because it means that server resources won't be tied up forever if a client never
+#    sends another message.
 def dequeue_request():
     logger.debug('into dequeue_request')
     try:
@@ -125,6 +151,8 @@ def dequeue_request():
             return Response(message, status=200, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
+    except queue.Empty as e:
+        return Response('', status=408, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     except Exception as e:
         logger.debug(f"dequeue_request exception {e!r}")
         e_message = e.response.text if e.response and e.response.text else ''
@@ -151,6 +179,8 @@ def dequeue_reply():
             return Response(message, status=200, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
+    except queue.Empty as e:
+        return Response('', status=408, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     except Exception as e:
         logger.debug(f"dequeue_reply exception {e!r}")
         e_message = e.response.text if e.response and e.response.text else ''
@@ -207,27 +237,35 @@ def _dequeue(operation, channel, reset_first):
     logger.debug(f'into _dequeue: {operation}, channel: {channel}, reset_first: {reset_first}')
     pickup, pickup_status = _verify_channel(channel, operation)
     try:
-        pickup['lock'].acquire()
-        if reset_first: # Clear out any (presumably dead) reader
-            pickup['q'].put('dying breath') # Satisfy outstanding (dead?) reader
-            pickup['q'] = queue.Queue(1) # Make double-sure queue is clean
-        pickup_status['pickup_wait'] = time.asctime()
-        pickup_status['pickup_time'] = None
-        if pickup['q'].empty(): # clear out already-read message
-            pickup_status['message'] = None
-            pickup_status['posted_time'] = None
-    finally:
-        pickup['lock'].release()
+        try:
+            pickup['lock'].acquire()
+            if reset_first: # Clear out any (presumably dead) reader
+                pickup['q'].put('dying breath') # Satisfy outstanding (dead?) reader
+                pickup['q'] = queue.Queue(1) # Make double-sure queue is clean
+            pickup_status['pickup_wait'] = time.asctime()
+            pickup_status['pickup_time'] = None
+            if pickup['q'].empty(): # clear out already-read message
+                pickup_status['message'] = None
+                pickup_status['posted_time'] = None
+        finally:
+            pickup['lock'].release()
 
-    msg = pickup['q'].get() # Block if no message, and return message and queue empty
-    logger.debug(f' dequeued: {operation}, channel: {channel}, msg: {msg}')
+        # Block if no message, and return message and queue empty. If blocked for a long time,
+        # give caller the a timeout status and allow it to re-issue dequeue.
+        try:
+            msg = pickup['q'].get(timeout=DEQUEUE_TIMEOUT_SECS)
+            logger.debug(f' dequeued: {operation}, channel: {channel}, msg: {msg}')
+            try:
+                pickup['lock'].acquire()
+                # Don't erase pickup_wait here because it can be useful to see how long a response took
+                pickup_status['pickup_time'] = time.asctime()
+            finally:
+                pickup['lock'].release()
+        except queue.Empty as e:
+            logger.debug(f' dequeue timed out: {operation}, channel: {channel}')
+            raise
 
-    try:
-        pickup['lock'].acquire()
-        # Don't erase pickup_wait here because it can be useful to see how long a response took
-        pickup_status['pickup_time'] = time.asctime()
     finally:
-        pickup['lock'].release()
         logger.debug('out of _dequeue')
 
     return msg
