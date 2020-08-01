@@ -55,7 +55,6 @@ channel_status = dict()
     reply:   {q: Queue, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
 """
 empty_status = {'message': None, 'posted_time': None, 'pickup_wait': None, 'pickup_time': None}
-debug_option = 'dbg_none'
 
 PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
 
@@ -93,9 +92,9 @@ def queue_request():
     finally:
         logger.debug('out of queue_request')
 
-"""
 @app.route('/queue_reply', methods=['POST'])
 def queue_reply():
+    logger.debug('into queue_reply')
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
@@ -108,10 +107,15 @@ def queue_reply():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        logger.debug(f"queue_reply exception {e!r}")
+        e_message = e.response.text if e.response and e.response.text else ''
+        return Response(e_message, status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+    finally:
+        logger.debug('out of queue_reply')
 
 @app.route('/dequeue_request', methods=['GET'])
 def dequeue_request():
+    logger.debug('into dequeue_request')
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
@@ -122,8 +126,11 @@ def dequeue_request():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
-"""
+        logger.debug(f"dequeue_request exception {e!r}")
+        e_message = e.response.text if e.response and e.response.text else ''
+        return Response(e_message, status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+    finally:
+        logger.debug('out of dequeue_request')
 
 @app.route('/dequeue_reply', methods=['GET'])
 def dequeue_reply():
@@ -145,12 +152,15 @@ def dequeue_reply():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        logger.debug(f"dequeue_reply exception {e!r}")
+        e_message = e.response.text if e.response and e.response.text else ''
+        return Response(e_message, status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         logger.debug('out of dequeue_reply')
 
 @app.route('/status', methods=['GET'])
 def status():
+    logger.debug(f'into status')
 
     def return_msg(msg):
         try:
@@ -173,6 +183,7 @@ def status():
         return Response(str(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         channel_status_lock.release()
+        logger.debug(f'out of status')
 
 
 def _enqueue(operation, channel, msg):
