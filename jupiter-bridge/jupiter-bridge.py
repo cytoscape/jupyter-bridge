@@ -271,6 +271,7 @@ def _dequeue(operation, channel, reset_first):
                 msg = pickup['qq']
             if msg is None:
                 raise queue.Empty()
+            pickup['qq'] = None
 
             #            if msg is None: raise queue.Empty()
             logger.debug(f'  dequeued: {operation}, channel: {channel}, msg: {msg}')
