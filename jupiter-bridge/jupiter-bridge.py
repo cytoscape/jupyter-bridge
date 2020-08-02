@@ -220,23 +220,23 @@ def _enqueue(operation, channel, msg):
     logger.debug(f' into _enqueue: {operation}, channel: {channel}, msg: {msg}')
     post, post_status = _verify_channel(channel, operation)
     try:
-        post['lock'].acquire()
-        if not post['q'].empty():
-            raise Exception(f'Channel {channel} contains unprocessed message')
+#        post['lock'].acquire()
+#        if not post['q'].empty():
+#            raise Exception(f'Channel {channel} contains unprocessed message')
         if not post['qq'] is None:
             raise Exception(f'qq Channel {channel} contains unprocessed message')
-        if not post_status['pickup_time'] is None:
+#        if not post_status['pickup_time'] is None:
             # Prior message was picked up, so get rid of waiter status
-            post_status['pickup_wait'] = post_status['pickup_time'] = None
-        post_status['posted_time'] = time.asctime()
-        post_status['message'] = msg
+#            post_status['pickup_wait'] = post_status['pickup_time'] = None
+#        post_status['posted_time'] = time.asctime()
+#        post_status['message'] = msg
         logger.debug(' put message ')
         if not post['qq'] is None: logger.debug('   qqPUT QUEUE IS NOT EMPTY')
 #        post['q'].put(msg)
         post['qq'] = msg
         logger.debug(' put message done')
     finally:
-        post['lock'].release()
+#        post['lock'].release()
         logger.debug(' out of _enqueue')
 
 def _dequeue(operation, channel, reset_first):
@@ -244,18 +244,19 @@ def _dequeue(operation, channel, reset_first):
     pickup, pickup_status = _verify_channel(channel, operation)
     try:
         try:
-            pickup['lock'].acquire()
+#            pickup['lock'].acquire()
             if reset_first: # Clear out any (presumably dead) reader
-                pickup['q'].put('dying breath') # Satisfy outstanding (dead?) reader
-                pickup['q'] = queue.Queue() # Make double-sure queue is clean
+#                pickup['q'].put('dying breath') # Satisfy outstanding (dead?) reader
+#                pickup['q'] = queue.Queue() # Make double-sure queue is clean
                 pickup['qq'] = None
-            pickup_status['pickup_wait'] = time.asctime()
-            pickup_status['pickup_time'] = None
-            if pickup['qq'] is None: # clear out already-read message
-                pickup_status['message'] = None
-                pickup_status['posted_time'] = None
+#            pickup_status['pickup_wait'] = time.asctime()
+#            pickup_status['pickup_time'] = None
+#            if pickup['qq'] is None: # clear out already-read message
+#                pickup_status['message'] = None
+#                pickup_status['posted_time'] = None
         finally:
-            pickup['lock'].release()
+#            pickup['lock'].release()
+            pass
 
         # Block if no message, and return message and queue empty. If blocked for a long time,
         # give caller the a timeout status and allow it to re-issue dequeue.
@@ -275,12 +276,12 @@ def _dequeue(operation, channel, reset_first):
 
             #            if msg is None: raise queue.Empty()
             logger.debug(f'  dequeued: {operation}, channel: {channel}, msg: {msg}')
-            try:
-                pickup['lock'].acquire()
+#            try:
+#                pickup['lock'].acquire()
                 # Don't erase pickup_wait here because it can be useful to see how long a response took
-                pickup_status['pickup_time'] = time.asctime()
-            finally:
-                pickup['lock'].release()
+#                pickup_status['pickup_time'] = time.asctime()
+#            finally:
+#                pickup['lock'].release()
         except queue.Empty as e:
 #            if not pickup['q'].empty(): logger.debug('   PICKUP QUEUE IS NOT EMPTY AFTER EMPTY EXCEPTION')
             logger.debug(f'  dequeue timed out: {operation}, channel: {channel}')
@@ -293,12 +294,13 @@ def _dequeue(operation, channel, reset_first):
 
 def _verify_channel(channel, operation):
     try:
-        channel_status_lock.acquire()
+#        channel_status_lock.acquire()
         if not channel in channel_status:
             channel_status[channel] = {'request': {'q': queue.Queue(), 'qq': None, 'lock': threading.Lock(), 'status': empty_status.copy()},
                                        'reply'  : {'q': queue.Queue(), 'qq': None, 'lock': threading.Lock(), 'status': empty_status.copy()}}
     finally:
-        channel_status_lock.release()
+#        channel_status_lock.release()
+        pass
 
     return channel_status[channel][operation], \
            channel_status[channel][operation]['status']
