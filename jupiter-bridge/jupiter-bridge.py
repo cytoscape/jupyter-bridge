@@ -217,7 +217,7 @@ def status():
 
 
 def _enqueue(operation, channel, msg):
-    logger.debug(f'into _enqueue: {operation}, channel: {channel}, msg: {msg}')
+    logger.debug(f' into _enqueue: {operation}, channel: {channel}, msg: {msg}')
     post, post_status = _verify_channel(channel, operation)
     try:
         post['lock'].acquire()
@@ -228,13 +228,16 @@ def _enqueue(operation, channel, msg):
             post_status['pickup_wait'] = post_status['pickup_time'] = None
         post_status['posted_time'] = time.asctime()
         post_status['message'] = msg
+        logger.debug(' put message ')
+        if not post['q'].empty(): logger.debug('   PUT QUEUE IS NOT EMPTY')
         post['q'].put(msg)
+        logger.debug(' put message done')
     finally:
         post['lock'].release()
-        logger.debug('out of _enqueue')
+        logger.debug(' out of _enqueue')
 
 def _dequeue(operation, channel, reset_first):
-    logger.debug(f'into _dequeue: {operation}, channel: {channel}, reset_first: {reset_first}')
+    logger.debug(f' into _dequeue: {operation}, channel: {channel}, reset_first: {reset_first}')
     pickup, pickup_status = _verify_channel(channel, operation)
     try:
         try:
@@ -253,8 +256,11 @@ def _dequeue(operation, channel, reset_first):
         # Block if no message, and return message and queue empty. If blocked for a long time,
         # give caller the a timeout status and allow it to re-issue dequeue.
         try:
+            logger.debug(' get message ')
+            if not pickup['q'].empty(): logger.debug('   PICKUP QUEUE IS NOT EMPTY BEFORE')
             msg = pickup['q'].get(timeout=DEQUEUE_TIMEOUT_SECS)
-            logger.debug(f' dequeued: {operation}, channel: {channel}, msg: {msg}')
+            if not pickup['q'].empty(): logger.debug('   PICKUP QUEUE IS NOT EMPTY AFTER GET')
+            logger.debug(f'  dequeued: {operation}, channel: {channel}, msg: {msg}')
             try:
                 pickup['lock'].acquire()
                 # Don't erase pickup_wait here because it can be useful to see how long a response took
@@ -262,11 +268,12 @@ def _dequeue(operation, channel, reset_first):
             finally:
                 pickup['lock'].release()
         except queue.Empty as e:
-            logger.debug(f' dequeue timed out: {operation}, channel: {channel}')
+            if not pickup['q'].empty(): logger.debug('   PICKUP QUEUE IS NOT EMPTY AFTER EMPTY EXCEPTION')
+            logger.debug(f'  dequeue timed out: {operation}, channel: {channel}')
             raise
 
     finally:
-        logger.debug('out of _dequeue')
+        logger.debug(' out of _dequeue')
 
     return msg
 
@@ -283,15 +290,10 @@ def _verify_channel(channel, operation):
            channel_status[channel][operation]['status']
 
 if __name__=='__main__':
-    app.run(host='0.0.0.0')
-    # if len(sys.argv) > 1:
-    #     host_ip = sys.argv[1]
-    # else:
-    #     host_ip = '127.0.0.1'
-    # if len(sys.argv) > 2:
-    #     port = sys.argv[2]
-    # else:
-    #     port = 9529
-    # if len(sys.argv) > 3:
-    #     debug_option = sys.argv[3]
-    # app.run(debug=True, host=host_ip, port=port)
+    debug = False
+    if len(sys.argv) > 1:
+        host_ip = sys.argv[1]
+        debug = True
+    else:
+        host_ip = '0.0.0.0'
+    app.run(debug=debug, host=host_ip)
