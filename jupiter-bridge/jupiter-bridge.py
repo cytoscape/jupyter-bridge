@@ -230,11 +230,11 @@ def _enqueue(operation, channel, msg):
 #            post_status['pickup_wait'] = post_status['pickup_time'] = None
 #        post_status['posted_time'] = time.asctime()
 #        post_status['message'] = msg
-        logger.debug(' put message ')
+        logger.debug(' put message at ' + time.asctime())
         if not post['qq'] is None: logger.debug('   qqPUT QUEUE IS NOT EMPTY')
 #        post['q'].put(msg)
         post['qq'] = msg
-        logger.debug(' put message done')
+        logger.debug(' put message done at ' + time.asctime())
     finally:
 #        post['lock'].release()
         logger.debug(' out of _enqueue')
@@ -271,8 +271,10 @@ def _dequeue(operation, channel, reset_first):
                 dequeue_timeout_secs_left -= 1
                 msg = pickup['qq']
             if msg is None:
+                logger.debug('  empty at ' + time.asctime())
                 raise queue.Empty()
             pickup['qq'] = None
+            logger.debug('   pickedup at ' + time.asctime())
 
             #            if msg is None: raise queue.Empty()
             logger.debug(f'  dequeued: {operation}, channel: {channel}, msg: {msg}')
