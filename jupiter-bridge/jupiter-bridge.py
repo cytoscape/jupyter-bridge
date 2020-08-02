@@ -263,9 +263,16 @@ def _dequeue(operation, channel, reset_first):
             logger.debug(' get message ')
             if not pickup['qq'] is None: logger.debug('   qqPICKUP QUEUE IS NOT EMPTY BEFORE')
 #            msg = pickup['q'].get(timeout=DEQUEUE_TIMEOUT_SECS)
+            dequeue_timeout_secs_left = DEQUEUE_TIMEOUT_SECS
             msg = pickup['qq']
-            pickup['qq'] = None
-            if msg is None: raise queue.Empty()
+            while msg is None and dequeue_timeout_secs_left > 0:
+                time.sleep(1)
+                dequeue_timeout_secs_left -= 1
+                msg = pickup['qq']
+            if msg is None:
+                raise queue.Empty()
+
+            #            if msg is None: raise queue.Empty()
             logger.debug(f'  dequeued: {operation}, channel: {channel}, msg: {msg}')
             try:
                 pickup['lock'].acquire()
