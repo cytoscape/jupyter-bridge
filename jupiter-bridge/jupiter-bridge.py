@@ -223,14 +223,17 @@ def _enqueue(operation, channel, msg):
         post['lock'].acquire()
         if not post['q'].empty():
             raise Exception(f'Channel {channel} contains unprocessed message')
+        if not post['qq'] is None:
+            raise Exception(f'qq Channel {channel} contains unprocessed message')
         if not post_status['pickup_time'] is None:
             # Prior message was picked up, so get rid of waiter status
             post_status['pickup_wait'] = post_status['pickup_time'] = None
         post_status['posted_time'] = time.asctime()
         post_status['message'] = msg
         logger.debug(' put message ')
-        if not post['q'].empty(): logger.debug('   PUT QUEUE IS NOT EMPTY')
-        post['q'].put(msg)
+        if not post['qq'] is None: logger.debug('   qqPUT QUEUE IS NOT EMPTY')
+#        post['q'].put(msg)
+        post['qq'] = msg
         logger.debug(' put message done')
     finally:
         post['lock'].release()
@@ -244,10 +247,11 @@ def _dequeue(operation, channel, reset_first):
             pickup['lock'].acquire()
             if reset_first: # Clear out any (presumably dead) reader
                 pickup['q'].put('dying breath') # Satisfy outstanding (dead?) reader
-                pickup['q'] = queue.Queue(1) # Make double-sure queue is clean
+                pickup['q'] = queue.Queue() # Make double-sure queue is clean
+                pickup['qq'] = None
             pickup_status['pickup_wait'] = time.asctime()
             pickup_status['pickup_time'] = None
-            if pickup['q'].empty(): # clear out already-read message
+            if pickup['qq'] is None: # clear out already-read message
                 pickup_status['message'] = None
                 pickup_status['posted_time'] = None
         finally:
@@ -257,9 +261,11 @@ def _dequeue(operation, channel, reset_first):
         # give caller the a timeout status and allow it to re-issue dequeue.
         try:
             logger.debug(' get message ')
-            if not pickup['q'].empty(): logger.debug('   PICKUP QUEUE IS NOT EMPTY BEFORE')
-            msg = pickup['q'].get(timeout=DEQUEUE_TIMEOUT_SECS)
-            if not pickup['q'].empty(): logger.debug('   PICKUP QUEUE IS NOT EMPTY AFTER GET')
+            if not pickup['qq'] is None: logger.debug('   qqPICKUP QUEUE IS NOT EMPTY BEFORE')
+#            msg = pickup['q'].get(timeout=DEQUEUE_TIMEOUT_SECS)
+            msg = pickup['qq']
+            pickup['qq'] = None
+            if msg is None: raise queue.Empty()
             logger.debug(f'  dequeued: {operation}, channel: {channel}, msg: {msg}')
             try:
                 pickup['lock'].acquire()
@@ -268,7 +274,7 @@ def _dequeue(operation, channel, reset_first):
             finally:
                 pickup['lock'].release()
         except queue.Empty as e:
-            if not pickup['q'].empty(): logger.debug('   PICKUP QUEUE IS NOT EMPTY AFTER EMPTY EXCEPTION')
+#            if not pickup['q'].empty(): logger.debug('   PICKUP QUEUE IS NOT EMPTY AFTER EMPTY EXCEPTION')
             logger.debug(f'  dequeue timed out: {operation}, channel: {channel}')
             raise
 
@@ -281,8 +287,8 @@ def _verify_channel(channel, operation):
     try:
         channel_status_lock.acquire()
         if not channel in channel_status:
-            channel_status[channel] = {'request': {'q': queue.Queue(), 'lock': threading.Lock(), 'status': empty_status.copy()},
-                                       'reply'  : {'q': queue.Queue(), 'lock': threading.Lock(), 'status': empty_status.copy()}}
+            channel_status[channel] = {'request': {'q': queue.Queue(), 'qq': None, 'lock': threading.Lock(), 'status': empty_status.copy()},
+                                       'reply'  : {'q': queue.Queue(), 'qq': None, 'lock': threading.Lock(), 'status': empty_status.copy()}}
     finally:
         channel_status_lock.release()
 
