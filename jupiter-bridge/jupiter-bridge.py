@@ -51,8 +51,8 @@ logger.addHandler(logger_handler)
 channel_status_lock = threading.Lock()
 channel_status = dict()
 """Structure:
-    request: {q: Queue, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
-    reply:   {q: Queue, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
+    request: {q: Queue, qq:message, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
+    reply:   {q: Queue, qq:message, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
 """
 empty_status = {'message': None, 'posted_time': None, 'pickup_wait': None, 'pickup_time': None}
 
@@ -281,8 +281,8 @@ def _verify_channel(channel, operation):
     try:
         channel_status_lock.acquire()
         if not channel in channel_status:
-            channel_status[channel] = {'request': {'q': queue.Queue(1), 'lock': threading.Lock(), 'status': empty_status.copy()},
-                                       'reply'  : {'q': queue.Queue(1), 'lock': threading.Lock(), 'status': empty_status.copy()}}
+            channel_status[channel] = {'request': {'q': queue.Queue(), 'lock': threading.Lock(), 'status': empty_status.copy()},
+                                       'reply'  : {'q': queue.Queue(), 'lock': threading.Lock(), 'status': empty_status.copy()}}
     finally:
         channel_status_lock.release()
 
