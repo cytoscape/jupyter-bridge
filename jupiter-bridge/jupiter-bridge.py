@@ -50,6 +50,7 @@ logger.addHandler(logger_handler)
 # Set up bridge data structures
 channel_status_lock = threading.Lock()
 channel_status = dict()
+msg_count = 0
 """Structure:
     request: {q: Queue, qq:message, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
     reply:   {q: Queue, qq:message, lock: lock, status: {message: text, posted_time: time, pickup_wait: time, pickup_time: time}}
@@ -234,7 +235,9 @@ def _enqueue(operation, channel, msg):
         if not post['qq'] is None: logger.debug('   qqPUT QUEUE IS NOT EMPTY')
 #        post['q'].put(msg)
         post['qq'] = msg
-        logger.debug(' put message done at ' + time.asctime())
+        global msg_count
+        msg_count += 1
+        logger.debug(' put message done at ' + time.asctime() + ', msg_count: ' + str(msg_count))
     finally:
 #        post['lock'].release()
         logger.debug(' out of _enqueue')
@@ -271,10 +274,10 @@ def _dequeue(operation, channel, reset_first):
                 dequeue_timeout_secs_left -= 1
                 msg = pickup['qq']
             if msg is None:
-                logger.debug('  empty at ' + time.asctime())
+                logger.debug('  empty at ' + time.asctime() + ', msg_count: ' + str(msg_count))
                 raise queue.Empty()
             pickup['qq'] = None
-            logger.debug('   pickedup at ' + time.asctime())
+            logger.debug('   pickedup at ' + time.asctime() + ', msg_count: ' + str(msg_count))
 
             #            if msg is None: raise queue.Empty()
             logger.debug(f'  dequeued: {operation}, channel: {channel}, msg: {msg}')
@@ -295,6 +298,8 @@ def _dequeue(operation, channel, reset_first):
     return msg
 
 def _verify_channel(channel, operation):
+    global channel_status
+    global channel_status_lock
     try:
 #        channel_status_lock.acquire()
         if not channel in channel_status:
