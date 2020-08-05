@@ -35,6 +35,7 @@ TEST_JSON = {"command": "POST",
              "data": {"file": "C:\\Program Files\\Cytoscape_v3.9.0-SNAPSHOT-May 29\\sampleData\\galFiltered.cys"},
              "headers": {"Content-Type": "application/json", "Accept": "application/json"}
              }
+BRIDGE_URL = 'http://localhost:5000'
 
 
 class JupyterBridgeTests(unittest.TestCase):
@@ -47,16 +48,22 @@ class JupyterBridgeTests(unittest.TestCase):
         pass
 
     @print_entry_exit
+    def test_ping(self):
+        res = requests.get(f'{BRIDGE_URL}/ping', headers={'Content-Type': 'text/plain'})
+        self.assertEqual(res.status_code, 200)
+        self.assertRegex(res.text, 'pong +\d.+\d.+\d')
+
+    @print_entry_exit
     def test_requests(self):
         self._test_basic_protocol('request', 'application/json')
 
         # Post a reply
-        res = requests.post('http://localhost:5000/queue_reply?channel=test', json=TEST_JSON,
+        res = requests.post(f'{BRIDGE_URL}/queue_reply?channel=test', json=TEST_JSON,
                             headers={'Content-Type': 'text/plain'})
         self.assertEqual(res.status_code, 200)
 
         # Verify that when a reply is pending, a new request can't be posted
-        res = requests.post('http://localhost:5000/queue_request?channel=test', json=TEST_JSON,
+        res = requests.post(f'{BRIDGE_URL}/queue_request?channel=test', json=TEST_JSON,
                             headers={'Content-Type': 'application/json'})
         self.assertEqual(res.status_code, 500)
 
@@ -66,40 +73,40 @@ class JupyterBridgeTests(unittest.TestCase):
 
     def _test_basic_protocol(self, operation, mime_type):
         # Verify that a timeout occurs when no operation is pending
-        res = requests.get(f'http://localhost:5000/dequeue_{operation}?channel=test')
+        res = requests.get(f'{BRIDGE_URL}/dequeue_{operation}?channel=test')
         self.assertEqual(res.status_code, 408)
 
         # Verify that posting JSON succeeds
-        res = requests.post(f'http://localhost:5000/queue_{operation}?channel=test', json=TEST_JSON,
+        res = requests.post(f'{BRIDGE_URL}/queue_{operation}?channel=test', json=TEST_JSON,
                             headers={'Content-Type': f'{mime_type}'})
         self.assertEqual(res.status_code, 200)
 
         # Verify that the posted JSON can be read back
-        res = requests.get(f'http://localhost:5000/dequeue_{operation}?channel=test')
+        res = requests.get(f'{BRIDGE_URL}/dequeue_{operation}?channel=test')
         self.assertEqual(res.status_code, 200)
         message = json.loads(res.text)
         self.assertDictEqual(message, TEST_JSON)
 
         # Verify that a timeout occurs because no operation is pending
-        res = requests.get(f'http://localhost:5000/dequeue_{operation}?channel=test')
+        res = requests.get(f'{BRIDGE_URL}/dequeue_{operation}?channel=test')
         self.assertEqual(res.status_code, 408)
 
         # Verify that posting JSON succeeds, but that a second post before a dequeue is rejected
-        res = requests.post(f'http://localhost:5000/queue_{operation}?channel=test', json=TEST_JSON,
+        res = requests.post(f'{BRIDGE_URL}/queue_{operation}?channel=test', json=TEST_JSON,
                             headers={'Content-Type': f'{mime_type}'})
         self.assertEqual(res.status_code, 200)
-        res = requests.post(f'http://localhost:5000/queue_{operation}?channel=test', json=TEST_JSON,
+        res = requests.post(f'{BRIDGE_URL}/queue_{operation}?channel=test', json=TEST_JSON,
                             headers={'Content-Type': f'{mime_type}'})
         self.assertEqual(res.status_code, 500)
 
         # Verify that the posted JSON can be read back
-        res = requests.get(f'http://localhost:5000/dequeue_{operation}?channel=test')
+        res = requests.get(f'{BRIDGE_URL}/dequeue_{operation}?channel=test')
         self.assertEqual(res.status_code, 200)
         message = json.loads(res.text)
         self.assertDictEqual(message, TEST_JSON)
 
         # Verify that a timeout occurs because no operation is pending
-        res = requests.get(f'http://localhost:5000/dequeue_{operation}?channel=test')
+        res = requests.get(f'{BRIDGE_URL}/dequeue_{operation}?channel=test')
         self.assertEqual(res.status_code, 408)
 
 

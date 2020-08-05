@@ -37,6 +37,8 @@ import redis
 
 app = Flask(__name__)
 
+JUPYTER_BRIDGE_VERSION = '0.0.1'
+
 
 # Set up detail logger
 logger = logging.getLogger('jupyter-bridge')
@@ -60,6 +62,14 @@ REQUEST = 'request'
 
 redis_db = redis.Redis('localhost')
 
+
+@app.route('/ping', methods=['GET'])
+def ping():
+    logger.debug('into ping')
+    try:
+        return Response(f'pong {JUPYTER_BRIDGE_VERSION}', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+    finally:
+        logger.debug('out of ping')
 
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
