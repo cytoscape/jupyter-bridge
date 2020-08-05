@@ -33,7 +33,7 @@ import sys
 import time
 import logging
 from logging.handlers import RotatingFileHandler
-import redis
+
 
 app = Flask(__name__)
 
@@ -61,10 +61,11 @@ REPLY = 'reply'
 REQUEST = 'request'
 
 try:
+    import redis
     redis_db = redis.Redis('localhost')
     logger.debug('started redis connection')
 except Exception as e:
-    logger.debug(f"queue_request exception {e!r}")
+    logger.debug(f'exception starting redis: {e!r}')
 
 
 
