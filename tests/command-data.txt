@@ -1,6 +1,0 @@
-{"command": "POST",
- "url": "http://somehost:9999/v1/commands/session/open",
- "params": null,
- "data": {"file": "C:\\Program Files\\Cytoscape_v3.9.0-SNAPSHOT-May 29\\sampleData\\galFiltered.cys"},
- "headers": {"Content-Type": "application/json", "Accept": "application/json"}
-}
