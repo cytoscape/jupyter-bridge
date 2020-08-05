@@ -60,14 +60,13 @@ PICKUP_TIME = b'pickup_time'
 REPLY = 'reply'
 REQUEST = 'request'
 
+logger.debug('starting jupyter-bridge with python environment: \n' + '\n'.join(sys.path))
 try:
     import redis
     redis_db = redis.Redis('localhost')
     logger.debug('started redis connection')
 except Exception as e:
     logger.debug(f'exception starting redis: {e!r}')
-
-
 
 @app.route('/ping', methods=['GET'])
 def ping():
