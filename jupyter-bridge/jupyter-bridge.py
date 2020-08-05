@@ -60,7 +60,12 @@ PICKUP_TIME = b'pickup_time'
 REPLY = 'reply'
 REQUEST = 'request'
 
-redis_db = redis.Redis('localhost')
+try:
+    redis_db = redis.Redis('localhost')
+    logger.debug('started redis connection')
+except Exception as e:
+    logger.debug(f"queue_request exception {e!r}")
+
 
 
 @app.route('/ping', methods=['GET'])
