@@ -23,6 +23,7 @@ server {
         listen 80;
         listen [::]:80;
 
-        server_name 70.95.64.191, jupyter-bridge.cytoscape.org;
+        server_name jupyter-bridge.cytoscape.org;
+
     return 404; # managed by Certbot
 }

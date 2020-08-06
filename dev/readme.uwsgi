@@ -1,0 +1,10 @@
+This was helpful in getting the uwsgi connected to nginx, but don't take it too literally, as:
+1) The user name in directories needs to be changed to my name
+2) There is a typo (`) at the end of the ExecStart line in the myproject.service file
+3) For installing wheel, uwsgi, and flask, it looks like the pip should be pip3?
+
+https://medium.com/swlh/deploy-flask-applications-with-uwsgi-and-nginx-on-ubuntu-18-04-2a47f378c3d2
+
+Remember, also, to install redis and requests
+Remember to use project name jupyter-bridge (and jupyter-bridge-env) instead of myproject (and myprojectenv)
+

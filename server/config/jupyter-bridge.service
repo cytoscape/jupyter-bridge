@@ -1,0 +1,13 @@
+[Unit]
+Description=uWSGI instance to serve jupyter-bridge
+After=network.target
+
+[Service]
+User=bdemchak
+Group=www-data
+WorkingDirectory=/home/bdemchak/jupyter-bridge
+Environment="PATH=/home/bdemchak/jupyter-bridge/jupyter-bridge-env/bin"
+ExecStart=/home/bdemchak/jupyter-bridge/jupyter-bridge-env/bin/uwsgi --ini jupyter-bridge.ini
+
+[Install]
+WantedBy=multi-user.target
