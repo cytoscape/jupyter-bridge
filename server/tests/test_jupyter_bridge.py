@@ -35,7 +35,8 @@ TEST_JSON = {"command": "POST",
              "data": {"file": "C:\\Program Files\\Cytoscape_v3.9.0-SNAPSHOT-May 29\\sampleData\\galFiltered.cys"},
              "headers": {"Content-Type": "application/json", "Accept": "application/json"}
              }
-BRIDGE_URL = 'http://localhost:5000'
+# BRIDGE_URL = 'http://localhost:5000'
+BRIDGE_URL = 'https://jupyter-bridge.cytoscape.org'
 
 
 class JupyterBridgeTests(unittest.TestCase):
