@@ -22,7 +22,7 @@
 
 import unittest
 
-from test_utils import *
+from server.test_utils import *
 import redis
 import requests
 import json

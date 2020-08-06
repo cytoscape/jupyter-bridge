@@ -1,0 +1,28 @@
+server {
+    server_name jupyter-bridge.cytoscape.org;
+
+    location / {
+        include uwsgi_params;
+        uwsgi_pass unix:/home/bdemchak/jupyter-bridge/jupyter-bridge.sock;
+    }
+
+    listen [::]:443 ssl ipv6only=on; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/jupyter-bridge.cytoscape.org/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/jupyter-bridge.cytoscape.org/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+server {
+    if ($host = jupyter-bridge.cytoscape.org) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+        listen 80;
+        listen [::]:80;
+
+        server_name 70.95.64.191, jupyter-bridge.cytoscape.org;
+    return 404; # managed by Certbot
+}

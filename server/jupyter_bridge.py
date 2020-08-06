@@ -34,6 +34,7 @@ import time
 import logging
 from logging.handlers import RotatingFileHandler
 
+
 app = Flask(__name__)
 
 JUPYTER_BRIDGE_VERSION = '0.0.1'
@@ -59,7 +60,8 @@ PICKUP_TIME = b'pickup_time'
 REPLY = 'reply'
 REQUEST = 'request'
 
-logger.debug('starting jupyter-bridge with python environment: \n' + '\n'.join(sys.path))
+# Start the Redis client ... assume that the server has already started
+logger.debug('starting Jupyter-bridge with python environment: \n' + '\n'.join(sys.path))
 try:
     import redis
     redis_db = redis.Redis('localhost')
