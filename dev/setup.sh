@@ -1,7 +1,8 @@
 echo When executing this, be sure pwd=/home/bdemchak/jupyter-bridge
 
-sudo ln /etc/nginx/sites-available/jupyter-bridge.cytoscape.org server/config/jupyter-bridge.cytoscape.org
-sudo ln /etc/nginx/sites-enabled/jupyter-bridge.cytoscape.org /etc/nginx/sites-available/jupyter-bridge.cytoscape.org
+echo Set up NGINX configuration for web page
+sudo cp server/config/jupyter-bridge.cytoscape.org /etc/nginx/sites-available/jupyter-bridge.cytoscape.org
+sudo ln -s /etc/nginx/sites-available/jupyter-bridge.cytoscape.org /etc/nginx/sites-enabled/
 
 echo Make sure this exists: /etc/letsencrypt/options-ssl-nginx.conf;
 echo Make sure this exists: /etc/letsencrypt/ssl-dhparams.pem;
