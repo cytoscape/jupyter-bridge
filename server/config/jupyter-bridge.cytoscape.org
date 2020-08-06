@@ -3,7 +3,7 @@ server {
 
     location / {
         include uwsgi_params;
-        uwsgi_pass unix:/home/bdemchak/jupyter-bridge/jupyter-bridge.sock;
+        uwsgi_pass unix:/home/bdemchak/jupyter-bridge/server/jupyter-bridge.sock;
     }
 
     listen [::]:443 ssl ipv6only=on; # managed by Certbot
