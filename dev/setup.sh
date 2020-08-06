@@ -3,7 +3,7 @@ echo When executing this, be sure pwd=/home/bdemchak
 echo see here for full nginx process from scratch: https://www.digitalocean.com/community/tutorials/how-to-install-nginx-on-ubuntu-18-04#:~:text=%20How%20To%20Install%20Nginx%20on%20Ubuntu%2018.04,of%20the%20installation%20process%2C%20Ubuntu%2018.04...%20More%20
 
 echo Set up NGINX configuration for web page
-sudo cp jupyter-bridge/server/config/jupyter-bridge.cytoscape.org /etc/nginx/sites-available/jupyter-bridge.cytoscape.org
+sudo cp jupyter-bridge/server/nginx-config/jupyter-bridge.cytoscape.org /etc/nginx/sites-available/jupyter-bridge.cytoscape.org
 sudo ln -s /etc/nginx/sites-available/jupyter-bridge.cytoscape.org /etc/nginx/sites-enabled/
 
 echo Make sure this exists: /etc/letsencrypt/options-ssl-nginx.conf;
@@ -22,7 +22,7 @@ deactivate
 
 echo see here for wsgi process: https://medium.com/swlh/deploy-flask-applications-with-uwsgi-and-nginx-on-ubuntu-18-04-2a47f378c3d2
 
-sudo cp jupyter-bridge/server/config/jupyter-bridge.service /etc/systemd/system/
+sudo cp jupyter-bridge/server/nginx-config/jupyter-bridge.service /etc/systemd/system/
 sudo systemctl start jupyter-bridge
 sudo systemctl enable jupyter-bridge
 sudo systemctl status jupyter-bridge
