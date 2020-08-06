@@ -34,7 +34,6 @@ import time
 import logging
 from logging.handlers import RotatingFileHandler
 
-
 app = Flask(__name__)
 
 JUPYTER_BRIDGE_VERSION = '0.0.1'
