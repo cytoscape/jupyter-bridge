@@ -5,9 +5,9 @@ After=network.target
 [Service]
 User=bdemchak
 Group=www-data
-WorkingDirectory=/home/bdemchak/jupyter-bridge
+WorkingDirectory=/home/bdemchak/jupyter-bridge/server
 Environment="PATH=/home/bdemchak/jupyter-bridge-env/bin"
-ExecStart=/home/bdemchak/jupyter-bridge-env/bin/uwsgi --ini server/jupyter-bridge.ini
+ExecStart=/home/bdemchak/jupyter-bridge-env/bin/uwsgi --ini jupyter-bridge.ini
 
 [Install]
 WantedBy=multi-user.target
