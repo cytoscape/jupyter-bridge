@@ -26,7 +26,10 @@ from server.test_utils import *
 import redis
 import requests
 import json
+import os
 
+# This test must run on the same machine as the redis instance, even if the actual
+# tests access jupyter-bridge through the normal web-based URL.
 redis_db = redis.Redis('localhost')
 
 TEST_JSON = {"command": "POST",
@@ -35,9 +38,7 @@ TEST_JSON = {"command": "POST",
              "data": {"file": "C:\\Program Files\\Cytoscape_v3.9.0-SNAPSHOT-May 29\\sampleData\\galFiltered.cys"},
              "headers": {"Content-Type": "application/json", "Accept": "application/json"}
              }
-# BRIDGE_URL = 'http://localhost:5000'
-BRIDGE_URL = 'https://jupyter-bridge.cytoscape.org'
-
+BRIDGE_URL = os.environ.get('JUPYTER_BRIDGE_URL', 'https://jupyter-bridge.cytoscape.org')
 
 class JupyterBridgeTests(unittest.TestCase):
     def setUp(self):

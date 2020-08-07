@@ -37,7 +37,7 @@ from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
-JUPYTER_BRIDGE_VERSION = '0.0.1'
+JUPYTER_BRIDGE_VERSION = '0.0.2'
 
 
 # Set up detail logger
@@ -49,6 +49,7 @@ logger.addHandler(logger_handler)
 
 PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
 DEQUEUE_TIMEOUT_SECS = 15 # Something less that connection timeout, but long enough not to cause caller to create a dequeue blizzard
+DEQUEUE_POLLING_SECS = 0.1 # A fast polling rate means overall fast response to clients
 
 # Redis message format:
 MESSAGE = b'message'
@@ -175,6 +176,7 @@ def _enqueue(operation, channel, msg):
         cur_value = redis_db.hgetall(key)
         if len(cur_value) == 0 or not MESSAGE in cur_value:
             _hmset_test(key, {MESSAGE: msg, PICKUP_TIME: '', PICKUP_WAIT: '', POSTED_TIME: time.asctime()})
+            _expire(key)
         else:
             raise Exception(f'Channel {key} contains unprocessed message')
     finally:
@@ -192,9 +194,10 @@ def _dequeue(operation, channel, reset_first):
         message = redis_db.hget(key, MESSAGE)
         dequeue_timeout_secs_left = DEQUEUE_TIMEOUT_SECS
         while message is None and dequeue_timeout_secs_left > 0:
-            time.sleep(1)
-            dequeue_timeout_secs_left -= 1
+            time.sleep(DEQUEUE_POLLING_SECS)
+            dequeue_timeout_secs_left -= DEQUEUE_POLLING_SECS
             message = redis_db.hget(key, MESSAGE)
+        # TODO: Polling is good enough for now, but for scaling, replace with await
 
         if message:
             _del_message(key)
@@ -227,6 +230,10 @@ def _hmset_test(key, value):
 def _del_message(key):
     if redis_db.hdel(key, MESSAGE) != 1:
         raise Exception(f'redis failed deleting {key} subkey {MESSAGE}')
+
+def _expire(key):
+    if redis_db.expire(60 * 60 * 24) != 1:
+        raise Exception(f'redis failed expiring {key}')
 
 if __name__=='__main__':
     debug = False
