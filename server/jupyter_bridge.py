@@ -32,6 +32,7 @@ from flask import Flask, request, Response
 import sys
 import time
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 
 
@@ -49,7 +50,8 @@ logger.addHandler(logger_handler)
 
 PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
 DEQUEUE_TIMEOUT_SECS = 15 # Something less that connection timeout, but long enough not to cause caller to create a dequeue blizzard
-DEQUEUE_POLLING_SECS = 0.1 # A fast polling rate means overall fast response to clients
+DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_BRIDGE_POLL_SECS', 0.1)) # A fast polling rate means overall fast response to clients
+EXPIRE_SECS = 60 * 60 * 24 # How many seconds before an idle key dies
 
 # Redis message format:
 MESSAGE = b'message'
@@ -63,6 +65,7 @@ REQUEST = 'request'
 
 # Start the Redis client ... assume that the server has already started
 logger.debug('starting Jupyter-bridge with python environment: \n' + '\n'.join(sys.path))
+logger.debug('Jupyter-bridge polling timeout: ' + str(DEQUEUE_TIMEOUT_SECS))
 try:
     import redis
     redis_db = redis.Redis('localhost')
@@ -232,7 +235,7 @@ def _del_message(key):
         raise Exception(f'redis failed deleting {key} subkey {MESSAGE}')
 
 def _expire(key):
-    if redis_db.expire(60 * 60 * 24) != 1:
+    if redis_db.expire(key, EXPIRE_SECS) != 1:
         raise Exception(f'redis failed expiring {key}')
 
 if __name__=='__main__':
