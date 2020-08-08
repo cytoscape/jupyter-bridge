@@ -64,10 +64,10 @@ class JupyterBridgeTests(unittest.TestCase):
                             headers={'Content-Type': 'text/plain'})
         self.assertEqual(res.status_code, 200)
 
-        # Verify that when a reply is pending, a new request can't be posted
+        # Verify that when a reply is pending, a new request can still be posted
         res = requests.post(f'{BRIDGE_URL}/queue_request?channel=test', json=TEST_JSON,
                             headers={'Content-Type': 'application/json'})
-        self.assertEqual(res.status_code, 500)
+        self.assertEqual(res.status_code, 200)
 
     @print_entry_exit
     def test_replies(self):
