@@ -46,6 +46,33 @@ const JupyterBridge = 'https://jupyter-bridge.cytoscape.org' // for production
 const LocalCytoscape = 'http://127.0.0.1:1234'
 const Channel = '1'
 
+var httpR; // for sending reply to Jupyter-bridge
+var httpC; // for sending command to Cytoscape
+var httpJ; // for fetching request from Jupyter-bridge
+
+if (typeof httpR === 'undefined') {
+    alert('creating new httpR')
+    httpR = new XMLHttpRequest();
+} else {
+    alert('aborting old httpR')
+    httpR.abort()
+}
+
+if (typeof httpC === 'undefined') {
+    alert('creating new httpC')
+    httpC = new XMLHttpRequest();
+} else {
+    alert('aborting old httpC')
+    httpC.abort()
+}
+if (typeof httpJ === 'undefined') {
+    alert('creating new httpJ')
+    httpJ = new XMLHttpRequest();
+} else {
+    alert('aborting old httpJ')
+    httpJ.abort()
+}
+
 function parseURL(url) {
     var reURLInformation = new RegExp([
         '^(https?:)//', // protocol
@@ -68,9 +95,7 @@ function parseURL(url) {
 }
 
 var showDebug = true
-var msgID = 0
 
-const httpR = new XMLHttpRequest();
 function replyCytoscape(replyStatus, replyStatusText, replyText) {
 
     // Clean up after Jupyter bridge accepts reply
@@ -94,7 +119,6 @@ function replyCytoscape(replyStatus, replyStatusText, replyText) {
     httpR.send(JSON.stringify(reply))
 }
 
-const httpC = new XMLHttpRequest();
 function callCytoscape(callSpec) {
 
     // Captures Cytoscape reply and sends it on
@@ -147,7 +171,6 @@ function callCytoscape(callSpec) {
     httpC.send(JSON.stringify(callSpec.data))
 }
 
-const httpJ = new XMLHttpRequest()
 function waitOnJupyterBridge(resetFirst) {
 
     // Captures request from Jupyter bridge
@@ -174,11 +197,10 @@ function waitOnJupyterBridge(resetFirst) {
     }
 
     // Wait for request from Jupyter bridge
-    var jupyterBridgeURL = JupyterBridge + '/dequeue_request?channel=' + Channel + '&msgID=' + msgID
+    var jupyterBridgeURL = JupyterBridge + '/dequeue_request?channel=' + Channel
     if (resetFirst) {
         jupyterBridgeURL = jupyterBridgeURL + '&reset'
     }
-    msgID++
     if (showDebug) {
         console.log('Starting dequeue on Jupyter bridge: ' + jupyterBridgeURL)
     }
@@ -190,56 +212,5 @@ function waitOnJupyterBridge(resetFirst) {
 // ejects any dead readers before we start a read
 waitOnJupyterBridge(true) // Wait for message from Jupyter bridge, execute it, and return reply
 
-/*
-    Test cases for local debugging between this module and Cytoscape,
-    not involving Jupyter-bridge.
-
-    Disable waitOnJupyterBridge call before trying one of these
- */
-
-// const testGET1 = { // expect 200 {"apiVersion": "v1", "cytoscapeVersion": "3.9.0-SNAPSHOT"}
-//     "command": "GET",
-//     "url": "http://somehost:9999/v1/version",
-//     "params": null,
-//     "data": null,
-//     "headers": null,
-// }
-//callCytoscape(testGET1)
-
-// const testPOST1 = { // expect 200 {"data": ["string"], "errors": []}
-//     "command": "POST",
-//     "url": "http://somehost:9999/v1/commands/command/echo",
-//     "params": null,
-//     "data": {"message": "this is a message"},
-//     "headers": {"Content-Type": "application/json", "Accept": "application/json"},
-// }
-//callCytoscape(testPOST1)
-
-// const testPUT1 = { // expect 200 {"data": {}, "errors": []}
-//     "command": "PUT",
-//     "url": "http://somehost:9999/v1/networks/currentNetwork",
-//     "params": null,
-//     "data": {"networkSUID": "1056223"},
-//     "headers": {"Content-Type": "application/json", "Accept": "application/json"},
-// }
-//callCytoscape(testPUT1)
-
-// const testDELETE1 = { // expect 200 no-content}
-//     "command": "DELETE",
-//     "url": "http://somehost:9999/v1/networks/1056223",
-//     "params": null,
-//     "data": null,
-//     "headers": {"Accept": "application/json"},
-// }
-//callCytoscape(testDELETE1)
-
-// const testCOMMAND1 = { // expect 200 {"data": {}, "errors": []}
-//     "command": "POST",
-//     "url": "http://somehost:9999/v1/commands/session/open",
-//     "params": null,
-//     "data": {"file": "C:\\Program Files\\Cytoscape_v3.9.0-SNAPSHOT-May 29\\sampleData\\galFiltered.cys"},
-//     "headers": {"Content-Type": "application/json", "Accept": "application/json"},
-// }
-//callCytoscape(testCOMMAND1)
 
 alert("hi from testjs https end " + JupyterBridge)
