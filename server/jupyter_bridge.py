@@ -96,7 +96,8 @@ def queue_request():
                 reply_key = f'{channel}:{REPLY}'
                 last_reply = redis_db.hget(reply_key, MESSAGE)
                 if last_reply:
-                    raise Exception(f'Reply not picked up before new request. Reply: {last_reply}, Request: {message}')
+                    logger.debug(f'Warning: Reply not picked up before new request. Reply: {last_reply}, Request: {message}')
+                    _del_message(reply_key)
 
                 _enqueue(REQUEST, channel, message)
                 return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})

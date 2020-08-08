@@ -1,4 +1,4 @@
-alert("hi from github start")
+alert("hi from testjs https start")
 
     /*
     These functions serve as a bridge between a remote Jupyter server and Cytoscape. They proxy
@@ -38,9 +38,10 @@ alert("hi from github start")
 
      */
 
-//const JupyterBridge = 'http://192.168.2.194:9529' // for production
-//const JupyterBridge = 'http://127.0.0.1:9529' // for testing against local Jupyter-bridge
-const JupyterBridge = 'http://70.95.64.191:9529' // for production
+
+//const JupyterBridge = 'http://127.0.0.1:5000' // for testing against local Jupyter-bridge
+const JupyterBridge = 'https://jupyter-bridge.cytoscape.org' // for production
+
 
 const LocalCytoscape = 'http://127.0.0.1:1234'
 const Channel = '1'
@@ -66,7 +67,8 @@ function parseURL(url) {
     }
 }
 
-var showDebug = false
+var showDebug = true
+var msgID = 0
 
 const httpR = new XMLHttpRequest();
 function replyCytoscape(replyStatus, replyStatusText, replyText) {
@@ -131,13 +133,13 @@ function callCytoscape(callSpec) {
     }
 
     var joiner = '?'
-    for (param in callSpec.params) {
+    for (let param in callSpec.params) {
         localURL = localURL + joiner + param + '=' + encodeURIComponent(callSpec.params[param])
         joiner = '&'
     }
 
     httpC.open(callSpec.command, localURL, true)
-    for (header in callSpec.headers) {
+    for (let header in callSpec.headers) {
         httpC.setRequestHeader(header, callSpec.headers[header])
     }
 
@@ -155,9 +157,16 @@ function waitOnJupyterBridge(resetFirst) {
                 console.log(' status: ' + httpJ.status + ', reply: ' + httpJ.responseText)
             }
             try {
-                callCytoscape(JSON.parse(httpJ.responseText))
+                if (httpJ.status === 408) {
+                    waitOnJupyterBridge(false)
+                } else {
+                    callCytoscape(JSON.parse(httpJ.responseText))
+                }
             } catch(err) {
-                // Bad responseText means client disconnected, so there's no payload.
+                if (showDebug) {
+                    console.log(' exception calling Cytoscape: ' + err)
+                }
+                // Bad responseText means something bad happened that we don't understand.
                 // Go wait on another request, as there's nothing to call Cytoscape with.
                 waitOnJupyterBridge(false)
             }
@@ -165,10 +174,11 @@ function waitOnJupyterBridge(resetFirst) {
     }
 
     // Wait for request from Jupyter bridge
-    var jupyterBridgeURL = JupyterBridge + '/dequeue_request?channel=' + Channel
+    var jupyterBridgeURL = JupyterBridge + '/dequeue_request?channel=' + Channel + '&msgID=' + msgID
     if (resetFirst) {
         jupyterBridgeURL = jupyterBridgeURL + '&reset'
     }
+    msgID++
     if (showDebug) {
         console.log('Starting dequeue on Jupyter bridge: ' + jupyterBridgeURL)
     }
@@ -232,4 +242,4 @@ waitOnJupyterBridge(true) // Wait for message from Jupyter bridge, execute it, a
 // }
 //callCytoscape(testCOMMAND1)
 
-alert("hi from github end " + JupyterBridge)
+alert("hi from testjs https end " + JupyterBridge)
