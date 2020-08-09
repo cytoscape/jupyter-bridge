@@ -192,7 +192,7 @@ def _dequeue(operation, channel, reset_first):
     try:
         key = f'{channel}:{operation}'
         if reset_first: # Clear out any (presumably dead) reader ... assume first dequeue precedes first enqueue
-            _del_message(key)
+            _del_message(key, permissive=True)
         _hmset_test(key, {PICKUP_WAIT: time.asctime(), PICKUP_TIME: ''})
 
         message = redis_db.hget(key, MESSAGE)
@@ -231,8 +231,8 @@ def _hmset_test(key, value):
     if not redis_db.hmset(key, value):
         raise Exception(f'redis failed setting {key} to {value}')
 
-def _del_message(key):
-    if redis_db.hdel(key, MESSAGE) != 1:
+def _del_message(key, permissive=False):
+    if redis_db.hdel(key, MESSAGE) != 1 and not permissive:
         raise Exception(f'redis failed deleting {key} subkey {MESSAGE}')
 
 def _expire(key):
