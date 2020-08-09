@@ -48,33 +48,12 @@ if (typeof Channel === 'undefined') { // ... but if not assigned, use a debuggin
 
 const LocalCytoscape = 'http://127.0.0.1:1234'
 
+var httpR = new XMLHttpRequest();; // for sending reply to Jupyter-bridge
+var httpC = new XMLHttpRequest();; // for sending command to Cytoscape
+var httpJ = new XMLHttpRequest();; // for fetching request from Jupyter-bridge
 
-var httpR; // for sending reply to Jupyter-bridge
-var httpC; // for sending command to Cytoscape
-var httpJ; // for fetching request from Jupyter-bridge
+var showDebug = true
 
-if (typeof httpR === 'undefined') {
-    alert('creating new httpR')
-    httpR = new XMLHttpRequest();
-} else {
-    alert('aborting old httpR')
-    httpR.abort()
-}
-
-if (typeof httpC === 'undefined') {
-    alert('creating new httpC')
-    httpC = new XMLHttpRequest();
-} else {
-    alert('aborting old httpC')
-    httpC.abort()
-}
-if (typeof httpJ === 'undefined') {
-    alert('creating new httpJ')
-    httpJ = new XMLHttpRequest();
-} else {
-    alert('aborting old httpJ')
-    httpJ.abort()
-}
 
 function parseURL(url) {
     var reURLInformation = new RegExp([
@@ -97,7 +76,6 @@ function parseURL(url) {
     }
 }
 
-var showDebug = true
 
 function replyCytoscape(replyStatus, replyStatusText, replyText) {
 
