@@ -41,10 +41,13 @@ alert("hi from testjs https start")
 
 //const JupyterBridge = 'http://127.0.0.1:5000' // for testing against local Jupyter-bridge
 const JupyterBridge = 'https://jupyter-bridge.cytoscape.org' // for production
-
+var Channel; // Could be defined by assignment pre-pended to this file
+if (typeof Channel === 'undefined') { // ... but if not assigned, use a debugging value
+    Channel = '1'
+}
 
 const LocalCytoscape = 'http://127.0.0.1:1234'
-const Channel = '1'
+
 
 var httpR; // for sending reply to Jupyter-bridge
 var httpC; // for sending command to Cytoscape
