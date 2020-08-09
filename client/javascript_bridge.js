@@ -191,7 +191,7 @@ function waitOnJupyterBridge(resetFirst) {
 
 // This kicks off a loop that ends by calling waitOnJupyterBridge again. This first call
 // ejects any dead readers before we start a read
-waitOnJupyterBridge(true) // Wait for message from Jupyter bridge, execute it, and return reply
+waitOnJupyterBridge(false) // Wait for message from Jupyter bridge, execute it, and return reply
 
 
 alert("hi from testjs https end " + JupyterBridge)
