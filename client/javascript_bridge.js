@@ -1,43 +1,45 @@
-alert("hi from testjs https start")
+ /*
+    These functions serve as a connector between a remote Jupyter server and Cytoscape.
 
-    /*
-    These functions serve as a bridge between a remote Jupyter server and Cytoscape. They proxy
-    the Jupyter server's HTTP calls (coming from a Jupyter Notebook with py4cytoscape) to
-    Cytoscape's CyREST layer. Note that for the case of a Jupyter server running on the same
-    machine as Cytoscape, this bridge isn't necessary because the Jupyter server's HTTP calls
-    can easily connect to Cytoscape over localhost. So, this bridge solves the problem of
-    a Jupyter server (e.g., Google's Colab) that can't connect to Cytoscape that sits behind
-    a firewall.
+    A remote Jupyter Notebook call to the py4cytoscape package is forwarded to the Jupyter Bridge,
+    which is a standalone server. The functions in this connector execute in the Jupyter Notebook
+    browser, which executes on the same PC as Cytoscape. So, that's 4 components: (A) remote
+    Jupyter Notebook, (B) separate Jupyter Bridge server, (C) this browser-based component, and
+    (D) Cytoscape. (A) is on a remote server, (B) is on a different remote server, and (C) and (D)
+    are on the user's PC.
 
-    At a high level, py4cytoscape running in a remote Jupyter server sends its request to
-    the Jupyter Bridge, which holds the request until this Javascript Bridge picks it up. The
-    Javascript Bridge fulfills the request by making an HTTP request to Cytoscape's CyREST. When
-    it gets a result, it passes it back to Jupyter Bridge, and py4cytoscape picks it up and
-    and continues execution of the Notebook.
+    (A) calls its py4cytoscape module, which forwards the request (in a JSON wrapper) to (B).
+    (C) picks up the request from (B), unpacks the request and forwards it to (D). (C) awaits a
+    reply from (D), and when it gets it, it forwards the reply (in a JSON wrapper) to (B).
+    (A)'s py4cytoscape module picks up the reply on (B) when it becomes available, unpacks it,
+    and returns it to (A).
+
+    A Jupyter Notebook can talk to only one Cytoscape (i.e., the one on the machine running the
+    Jupyter Notebook browser), and Cytoscape should be called by only one Jupyter Notebook. The
+    Jupyter Bridge differentiates between Notebook-Cytoscape conversations via a channel UUID.
+    The UUID is prepended to this browser component by py4Cytoscape, and the component is
+    started by the Jupyter Notebook. (I wish py4Cytoscape could start the component, too, but I
+    haven't figured out how to do that yet, so startup code *is* required in the Jupyter
+    Notebook.)
+
+    Note that for the case of a Jupyter server running on the same machine as Cytoscape, this
+    bridge isn't necessary because the Jupyter server's HTTP calls can easily connect to
+    Cytoscape over a localhost socket. So, the combination of Jupyter Bridge and this browser
+    component solves the problem of a Jupyter server (e.g., Google's Colab) that can't
+    connect to Cytoscape that sits behind a firewall.
 
     The request represents an HTTP call that py4cytoscape would normally make via HTTP directly
     to Cytoscape via localhost when both py4cytoscape and Cytoscape are running on the same machine.
     The possible requests are:
 
-    GET(url, params) - may return plain text or JSON
-    POST(url, params, body as JSON) - may return plain text or JSON
-    POST(url, data as JSON, headers as {'Content-Type': 'application/json', 'Accept': 'application/json'} - returns JSON
-    PUT(url, params, body as JSON) - may return plain text or JSON
-    DELETE(url, params)
-
-    To handle this:
-    * The URL is rewritten to be http://localhost:1234
-    * The params is passed in as stringified JSON
-    * The body is passed in as stringified JSON
-    * The data is passed in as stringified JSON
-    * Headers are passed in as stringified JSON
-    * Data and status are passed back as text and interpreted by the caller
-
     Unhandled requests (so far):
     webbrowser.open()
+ */
 
-     */
-
+var showDebug = true
+if (showDebug) {
+    alert("Starting Jupyter-bridge browser component")
+}
 
 //const JupyterBridge = 'http://127.0.0.1:5000' // for testing against local Jupyter-bridge
 const JupyterBridge = 'https://jupyter-bridge.cytoscape.org' // for production
@@ -51,8 +53,6 @@ const LocalCytoscape = 'http://127.0.0.1:1234'
 var httpR = new XMLHttpRequest();; // for sending reply to Jupyter-bridge
 var httpC = new XMLHttpRequest();; // for sending command to Cytoscape
 var httpJ = new XMLHttpRequest();; // for fetching request from Jupyter-bridge
-
-var showDebug = true
 
 const HTTP_OK = 200
 const HTTP_SYS_ERR = 500
@@ -205,5 +205,6 @@ function waitOnJupyterBridge(resetFirst) {
 // ejects any dead readers before we start a read
 waitOnJupyterBridge(false) // Wait for message from Jupyter bridge, execute it, and return reply
 
-
-alert("hi from testjs https end " + JupyterBridge)
+if (showDebug) {
+    alert("Jupyter-bridge browser component is started on " + JupyterBridge + ', channel ' + Channel)
+}
