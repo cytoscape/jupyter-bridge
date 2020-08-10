@@ -210,8 +210,6 @@ def _dequeue(operation, channel, reset_first):
     key = f'{channel}:{operation}'
     try:
         dequeue_busy = redis_db.hget(key, DEQUEUE_BUSY) or DEQUEUE_IDLE_STATUS
-        is_busy = (dequeue_busy == DEQUEUE_BUSY_STATUS)
-        logger.debug(f'  comparing busy flag {dequeue_busy} {type(dequeue_busy)} to {DEQUEUE_BUSY_STATUS} {type(DEQUEUE_BUSY_STATUS)}: {is_busy} ')
         if dequeue_busy == DEQUEUE_BUSY_STATUS:
             valid_reader = False
             logger.debug(f'  _dequeue detected redundant reader: {operation}, channel: {channel}')
