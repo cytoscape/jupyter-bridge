@@ -55,11 +55,19 @@ SLOW_DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_SLOW_BRIDGE_POLL_SECS'
 ALLOWED_FAST_DEQUEUE_POLLS = int(os.environ.get('JUPYTER_ALLOWED_FAST_DEQUEUE_POLLS', 10)) # Count of polls before client drops from FAST to SLOW
 EXPIRE_SECS = 60 * 60 * 24 # How many seconds before an idle key dies
 
+DEQUEUE_BUSY_STATUS = 'busy'
+DEQUEUE_IDLE_STATUS = 'idle'
+
+HTTP_OK = 200
+HTTP_SYS_ERR = 500
+HTTP_TIMEOUT = 409
+HTTP_TOO_MANY = 429
+
 # Redis message format:
 MESSAGE = b'message'
 POSTED_TIME = b'posted_time'
-PICKUP_WAIT = b'pickup_wait'
 PICKUP_TIME = b'pickup_time'
+DEQUEUE_BUSY = b'dequeue_busy'
 REPLY_FAST_POLLS_LEFT = b'reply_fast_polls_left'
 
 # Redis key constants
@@ -103,14 +111,14 @@ def queue_request():
                     _del_message(reply_key)
 
                 _enqueue(REQUEST, channel, message)
-                return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+                return Response('', status=HTTP_OK, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
         logger.debug(f"queue_request exception {e!r}")
-        return Response(_exception_message(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        return Response(_exception_message(e), status=HTTP_SYS_ERR, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         logger.debug('out of queue_request')
 
@@ -123,14 +131,14 @@ def queue_reply():
             if request.content_type.startswith('text/plain'):
                 message = request.get_data()
                 _enqueue(REPLY, channel, message)
-                return Response('', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+                return Response('', status=HTTP_OK, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be text/plain')
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
         logger.debug(f"queue_reply exception {e!r}")
-        return Response(_exception_message(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        return Response(_exception_message(e), status=HTTP_SYS_ERR, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         logger.debug('out of queue_reply')
 
@@ -140,17 +148,20 @@ def dequeue_request():
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
-            message = _dequeue(REQUEST, channel, 'reset' in request.args) # Will block waiting for message
-            if message is None:
-                return Response('', status=408, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+            message, valid_reader = _dequeue(REQUEST, channel, 'reset' in request.args) # Will block waiting for message
+            if valid_reader:
+                if message is None:
+                    return Response('', status=HTTP_TIMEOUT, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+                else:
+                    message = _add_padding(message)
+                    return Response(message, status=HTTP_OK, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'})
             else:
-                message = _add_padding(message)
-                return Response(message, status=200, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'})
+                return Response('', status=HTTP_TOO_MANY, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
         logger.debug(f"dequeue_request exception {e!r}")
-        return Response(_exception_message(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        return Response(_exception_message(e), status=HTTP_SYS_ERR, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         logger.debug('out of dequeue_request')
 
@@ -160,18 +171,21 @@ def dequeue_reply():
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
-            message = _dequeue(REPLY, channel, 'reset' in request.args) # Will block waiting for message
-            if message is None:
-                return Response('', status=408, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+            message, valid_reader = _dequeue(REPLY, channel, 'reset' in request.args) # Will block waiting for message
+            if valid_reader:
+                if message is None:
+                    return Response('', status=HTTP_TIMEOUT, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+                else:
+                    message = _add_padding(message)
+                    return Response(message, status=HTTP_OK, content_type='application/json',
+                                    headers={'Access-Control-Allow-Origin': '*'})
             else:
-                message = _add_padding(message)
-                return Response(message, status=200, content_type='application/json',
-                                headers={'Access-Control-Allow-Origin': '*'})
+                return Response('', status=HTTP_TOO_MANY, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
         logger.debug(f"dequeue_reply exception {e!r}")
-        return Response(_exception_message(e), status=500, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
+        return Response(_exception_message(e), status=HTTP_SYS_ERR, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         logger.debug('out of dequeue_reply')
 
@@ -182,7 +196,7 @@ def _enqueue(operation, channel, msg):
         key = f'{channel}:{operation}'
         cur_value = redis_db.hgetall(key)
         if len(cur_value) == 0 or not MESSAGE in cur_value:
-            _set_key_value(key, {MESSAGE: msg, PICKUP_TIME: '', PICKUP_WAIT: '', POSTED_TIME: time.asctime()})
+            _set_key_value(key, {MESSAGE: msg, PICKUP_TIME: '', POSTED_TIME: time.asctime()})
             _expire(key)
         else:
             raise Exception(f'Channel {key} contains unprocessed message')
@@ -192,50 +206,59 @@ def _enqueue(operation, channel, msg):
 def _dequeue(operation, channel, reset_first):
     logger.debug(f' into _dequeue: {operation}, channel: {channel}, reset_first: {reset_first}')
     message = None
+    valid_reader = True
+    key = f'{channel}:{operation}'
     try:
-        key = f'{channel}:{operation}'
-        if reset_first: # Clear out any (presumably dead) reader ... assume first dequeue precedes first enqueue
-            _del_message(key, permissive=True)
-        _set_key_value(key, {PICKUP_WAIT: time.asctime(), PICKUP_TIME: ''})
-
-        # Use a heuristic to figure out how often to poll redis for a request or reply. This is useful because
-        # there are known to be zombie waiters, particularly because the browser create virtual machines
-        # that keep executing, but on behalf of no client. Zombies could also exist simply because a user
-        # isn't calling Cytoscape, or Cytoscape is taking a long time to return a result. If we allow
-        # zombies to poll rapidly, redis bandwidth for legitimate users is unavailable. For this heuristic,
-        # we allow fast polling for some number of _dequeue calls, but then drop down to a much slower
-        # polling after that. All of this can go away if we wait asynchronously for a key value, but that's
-        # for another day.
-        fast_polls_left = redis_db.hget(key, REPLY_FAST_POLLS_LEFT)
-        if fast_polls_left is None:
-            fast_polls_left = ALLOWED_FAST_DEQUEUE_POLLS
+        dequeue_busy = redis_db.hget(key, DEQUEUE_BUSY) or DEQUEUE_IDLE_STATUS
+        if dequeue_busy == DEQUEUE_BUSY_STATUS:
+            valid_reader = False
+            logger.debug(f'  _dequeue detected redundant reader: {operation}, channel: {channel}')
         else:
-            fast_polls_left = int(fast_polls_left.decode('utf-8'))
-        if fast_polls_left > 0:
-            fast_polls_left -= 1
-            _set_key_value(key, {REPLY_FAST_POLLS_LEFT: fast_polls_left})
-            dequeue_polling_secs = FAST_DEQUEUE_POLLING_SECS
-        else:
-            dequeue_polling_secs = SLOW_DEQUEUE_POLLING_SECS
+            _set_key_value(key, {DEQUEUE_BUSY: DEQUEUE_BUSY_STATUS})
+            if reset_first: # Clear out any (presumably dead) reader ... assume first dequeue precedes first enqueue
+                _del_message(key, permissive=True)
+            _set_key_value(key, {PICKUP_TIME: ''})
 
-        # Keep trying to read a message until we have to give up
-        message = redis_db.hget(key, MESSAGE)
-        dequeue_timeout_secs_left = DEQUEUE_TIMEOUT_SECS
-        while message is None and dequeue_timeout_secs_left > 0:
-            time.sleep(dequeue_polling_secs)
-            dequeue_timeout_secs_left -= dequeue_polling_secs
+            # Use a heuristic to figure out how often to poll redis for a request or reply. This is useful because
+            # there are known to be zombie waiters, particularly because the browser create virtual machines
+            # that keep executing, but on behalf of no client. Zombies could also exist simply because a user
+            # isn't calling Cytoscape, or Cytoscape is taking a long time to return a result. If we allow
+            # zombies to poll rapidly, redis bandwidth for legitimate users is unavailable. For this heuristic,
+            # we allow fast polling for some number of _dequeue calls, but then drop down to a much slower
+            # polling after that. All of this can go away if we wait asynchronously for a key value, but that's
+            # for another day.
+            fast_polls_left = redis_db.hget(key, REPLY_FAST_POLLS_LEFT)
+            if fast_polls_left is None:
+                fast_polls_left = ALLOWED_FAST_DEQUEUE_POLLS
+            else:
+                fast_polls_left = int(fast_polls_left.decode('utf-8'))
+            if fast_polls_left > 0:
+                fast_polls_left -= 1
+                _set_key_value(key, {REPLY_FAST_POLLS_LEFT: fast_polls_left})
+                dequeue_polling_secs = FAST_DEQUEUE_POLLING_SECS
+            else:
+                dequeue_polling_secs = SLOW_DEQUEUE_POLLING_SECS
+
+            # Keep trying to read a message until we have to give up
             message = redis_db.hget(key, MESSAGE)
-        # TODO: Polling is good enough for now, but for scaling, replace with await
+            dequeue_timeout_secs_left = DEQUEUE_TIMEOUT_SECS
+            while message is None and dequeue_timeout_secs_left > 0:
+                time.sleep(dequeue_polling_secs)
+                dequeue_timeout_secs_left -= dequeue_polling_secs
+                message = redis_db.hget(key, MESSAGE)
+            # TODO: Polling is good enough for now, but for scaling, replace with await
 
-        if message:
-            _del_message(key)
-            _set_key_value(key, {PICKUP_TIME: time.asctime(), REPLY_FAST_POLLS_LEFT: ALLOWED_FAST_DEQUEUE_POLLS})
-        else:
-            logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}, fast polls left: {fast_polls_left}, polling seconds: {dequeue_polling_secs}')
+            if message:
+                _del_message(key)
+                _set_key_value(key, {PICKUP_TIME: time.asctime(), REPLY_FAST_POLLS_LEFT: ALLOWED_FAST_DEQUEUE_POLLS})
+            else:
+                logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}, fast polls left: {fast_polls_left}, polling seconds: {dequeue_polling_secs}')
     finally:
+        if valid_reader:
+            _set_key_value(key, {DEQUEUE_BUSY: DEQUEUE_IDLE_STATUS})
         logger.debug(' out of _dequeue')
 
-    return message
+    return message, valid_reader
 
 def _add_padding(message):
     if PAD_MESSAGE:
