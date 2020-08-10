@@ -210,16 +210,13 @@ def _dequeue(operation, channel, reset_first):
         if fast_polls_left is None:
             fast_polls_left = ALLOWED_FAST_DEQUEUE_POLLS
         else:
-            logger.debug(f'  raw fast_polls_left: {fast_polls_left}, key: {key}')
             fast_polls_left = int(fast_polls_left.decode('utf-8'))
-        logger.debug(f'  fast_polls_left: {fast_polls_left}, type: {type(fast_polls_left)}')
         if fast_polls_left > 0:
             _set_key_value(key, {REPLY_FAST_POLLS_LEFT: str(fast_polls_left - 1)})
             dequeue_polling_secs = FAST_DEQUEUE_POLLING_SECS
         else:
             dequeue_polling_secs = SLOW_DEQUEUE_POLLING_SECS
 
-        logger.debug(f'  _dequeue polling seconds: {operation}, channel: {channel}, polling seconds: {dequeue_polling_secs}')
         message = redis_db.hget(key, MESSAGE)
         dequeue_timeout_secs_left = DEQUEUE_TIMEOUT_SECS
         while message is None and dequeue_timeout_secs_left > 0:
@@ -232,7 +229,7 @@ def _dequeue(operation, channel, reset_first):
             _del_message(key)
             _set_key_value(key, {PICKUP_TIME: time.asctime()})
         else:
-            logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}')
+            logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}, polling seconds: {dequeue_polling_secs}')
     finally:
         logger.debug(' out of _dequeue')
 
