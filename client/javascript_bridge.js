@@ -54,6 +54,11 @@ var httpJ = new XMLHttpRequest();; // for fetching request from Jupyter-bridge
 
 var showDebug = true
 
+const HTTP_OK = 200
+const HTTP_SYS_ERR = 500
+const HTTP_TIMEOUT = 408
+const HTTP_TOO_MANY = 429
+
 
 function parseURL(url) {
     var reURLInformation = new RegExp([
@@ -161,10 +166,17 @@ function waitOnJupyterBridge(resetFirst) {
                 console.log(' status: ' + httpJ.status + ', reply: ' + httpJ.responseText)
             }
             try {
-                if (httpJ.status === 408) {
-                    waitOnJupyterBridge(false)
+                if (httpJ.status == HTTP_TOO_MANY) {
+                    // Nothing more to do ... the browser has created too many listeners,
+                    // and it's time to stop listening because the server saw a listener
+                    // listening on this channel before we got there.
+                    console.log('  shutting down because of redundant reader on channel: ' + Channel)
                 } else {
-                    callCytoscape(JSON.parse(httpJ.responseText))
+                    if (httpJ.status === HTTP_TIMEOUT) {
+                        waitOnJupyterBridge(false)
+                    } else {
+                        callCytoscape(JSON.parse(httpJ.responseText))
+                    }
                 }
             } catch(err) {
                 if (showDebug) {
