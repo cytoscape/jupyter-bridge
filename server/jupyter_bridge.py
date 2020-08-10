@@ -74,15 +74,33 @@ REPLY_FAST_POLLS_LEFT = b'reply_fast_polls_left'
 REPLY = 'reply'
 REQUEST = 'request'
 
-# Start the Redis client ... assume that the server has already started
-logger.debug('starting Jupyter-bridge with python environment: \n' + '\n'.join(sys.path))
-logger.debug('Jupyter-bridge polling timeout: ' + str(DEQUEUE_TIMEOUT_SECS))
+logger.debug('Starting Jupyter-bridge with python environment: \n' + '\n'.join(sys.path))
+logger.debug(f'Jupyter-bridge polling timeout: {DEQUEUE_TIMEOUT_SECS}, slow poll: {SLOW_DEQUEUE_POLLING_SECS}, fast poll: {FAST_DEQUEUE_POLLING_SECS}')
+
+# Start the Redis client ... assume that the redis server has already started
 try:
     import redis
     redis_db = redis.Redis('localhost')
     logger.debug('started redis connection')
 except Exception as e:
     logger.debug(f'exception starting redis: {e!r}')
+
+
+# Clear out all keys in case prior server instance was in the middle of any operations
+def _del_key(key):
+    try:
+        if redis_db.delete(key) == 1:
+            logger.debug(f'Deleted key {key}')
+        else:
+            logger.debug(f'Failed deleting key {key}')
+    except Exception as e:
+        logger.debug(f'Exception deleting key {key}: {e}')
+
+for key in redis_db.keys(f'*:{REPLY}'):
+    _del_key(key)
+
+for key in redis_db.keys(f'*:{REQUEST}'):
+    _del_key(key)
 
 @app.route('/ping', methods=['GET'])
 def ping():
@@ -281,6 +299,7 @@ def _set_key_value(key, value):
 def _del_message(key, permissive=False):
     if redis_db.hdel(key, MESSAGE) != 1 and not permissive:
         raise Exception(f'redis failed deleting {key} subkey {MESSAGE}')
+
 
 def _expire(key):
     if redis_db.expire(key, EXPIRE_SECS) != 1:
