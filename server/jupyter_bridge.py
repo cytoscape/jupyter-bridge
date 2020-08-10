@@ -211,6 +211,7 @@ def _dequeue(operation, channel, reset_first):
             fast_polls_left = ALLOWED_FAST_DEQUEUE_POLLS
         else:
             fast_polls_left = fast_polls_left.decode('utf-8')
+        logger.debug(f'  fast_polls_left: {fast_polls_left}, type: {type(fast_polls_left)}')
         if fast_polls_left > 0:
             _set_key_value(key, {REPLY_FAST_POLLS_LEFT: str(fast_polls_left - 1)})
             dequeue_polling_secs = FAST_DEQUEUE_POLLING_SECS
