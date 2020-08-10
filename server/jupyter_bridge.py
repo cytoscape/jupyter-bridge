@@ -198,7 +198,7 @@ def _dequeue(operation, channel, reset_first):
             _del_message(key, permissive=True)
         _set_key_value(key, {PICKUP_WAIT: time.asctime(), PICKUP_TIME: ''})
 
-        # Use a heuristic to figure out how often to poll redis for a reply. This is useful because
+        # Use a heuristic to figure out how often to poll redis for a request or reply. This is useful because
         # there are known to be zombie waiters, particularly because the browser create virtual machines
         # that keep executing, but on behalf of no client. Zombies could also exist simply because a user
         # isn't calling Cytoscape, or Cytoscape is taking a long time to return a result. If we allow
@@ -217,6 +217,7 @@ def _dequeue(operation, channel, reset_first):
         else:
             dequeue_polling_secs = SLOW_DEQUEUE_POLLING_SECS
 
+        # Keep trying to read a message until we have to give up
         message = redis_db.hget(key, MESSAGE)
         dequeue_timeout_secs_left = DEQUEUE_TIMEOUT_SECS
         while message is None and dequeue_timeout_secs_left > 0:
