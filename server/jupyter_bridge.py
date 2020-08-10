@@ -49,8 +49,10 @@ logger.setLevel('DEBUG')
 logger.addHandler(logger_handler)
 
 PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
-DEQUEUE_TIMEOUT_SECS = 15 # Something less that connection timeout, but long enough not to cause caller to create a dequeue blizzard
-DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_BRIDGE_POLL_SECS', 0.1)) # A fast polling rate means overall fast response to clients
+DEQUEUE_TIMEOUT_SECS = float(os.environ.get('JUPYTER_DEQUEUE_TIMEOUT_SECS', 15)) # Something less that connection timeout, but long enough not to cause caller to create a dequeue blizzard
+FAST_DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_FAST_BRIDGE_POLL_SECS', 0.1)) # A fast polling rate means overall fast response to clients
+ALLOWED_FAST_DEQUEUE_POLLS = float(os.environ.get('JUPYTER_ALLOWED_FAST_DEQUEUE_POLLS', 10)) # Count of polls before client drops from FAST to SLOW
+SLOW_DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_SLOW_BRIDGE_POLL_SECS', 2)) # A slow polling rate means saving redis bandwidth
 EXPIRE_SECS = 60 * 60 * 24 # How many seconds before an idle key dies
 
 # Redis message format:
@@ -58,6 +60,7 @@ MESSAGE = b'message'
 POSTED_TIME = b'posted_time'
 PICKUP_WAIT = b'pickup_wait'
 PICKUP_TIME = b'pickup_time'
+REPLY_FAST_POLLS_LEFT = b'reply_fast_polls_left'
 
 # Redis key constants
 REPLY = 'reply'
@@ -179,7 +182,7 @@ def _enqueue(operation, channel, msg):
         key = f'{channel}:{operation}'
         cur_value = redis_db.hgetall(key)
         if len(cur_value) == 0 or not MESSAGE in cur_value:
-            _hmset_test(key, {MESSAGE: msg, PICKUP_TIME: '', PICKUP_WAIT: '', POSTED_TIME: time.asctime()})
+            _set_key_value(key, {MESSAGE: msg, PICKUP_TIME: '', PICKUP_WAIT: '', POSTED_TIME: time.asctime()})
             _expire(key)
         else:
             raise Exception(f'Channel {key} contains unprocessed message')
@@ -193,19 +196,39 @@ def _dequeue(operation, channel, reset_first):
         key = f'{channel}:{operation}'
         if reset_first: # Clear out any (presumably dead) reader ... assume first dequeue precedes first enqueue
             _del_message(key, permissive=True)
-        _hmset_test(key, {PICKUP_WAIT: time.asctime(), PICKUP_TIME: ''})
+        _set_key_value(key, {PICKUP_WAIT: time.asctime(), PICKUP_TIME: ''})
 
+        # Use a heuristic to figure out how often to poll redis for a reply. This is useful because
+        # there are known to be zombie waiters, particularly because the browser create virtual machines
+        # that keep executing, but on behalf of no client. Zombies could also exist simply because a user
+        # isn't calling Cytoscape, or Cytoscape is taking a long time to return a result. If we allow
+        # zombies to poll rapidly, redis bandwidth for legitimate users is unavailable. For this heuristic,
+        # we allow fast polling for some number of _dequeue calls, but then drop down to a much slower
+        # polling after that. All of this can go away if we wait asynchronously for a key value, but that's
+        # for another day.
+        fast_polls_left = redis_db.hget(key, REPLY_FAST_POLLS_LEFT)
+        if fast_polls_left is None:
+            fast_polls_left = ALLOWED_FAST_DEQUEUE_POLLS
+        else:
+            fast_polls_left = fast_polls_left.decode('utf-8')
+        if fast_polls_left > 0:
+            _set_key_value(key, {REPLY_FAST_POLLS_LEFT: str(fast_polls_left - 1)})
+            dequeue_polling_secs = FAST_DEQUEUE_POLLING_SECS
+        else:
+            dequeue_polling_secs = SLOW_DEQUEUE_POLLING_SECS
+
+        logger.debug(f'  _dequeue polling seconds: {operation}, channel: {channel}, polling seconds: {dequeue_polling_secs}')
         message = redis_db.hget(key, MESSAGE)
         dequeue_timeout_secs_left = DEQUEUE_TIMEOUT_SECS
         while message is None and dequeue_timeout_secs_left > 0:
-            time.sleep(DEQUEUE_POLLING_SECS)
-            dequeue_timeout_secs_left -= DEQUEUE_POLLING_SECS
+            time.sleep(dequeue_polling_secs)
+            dequeue_timeout_secs_left -= dequeue_polling_secs
             message = redis_db.hget(key, MESSAGE)
         # TODO: Polling is good enough for now, but for scaling, replace with await
 
         if message:
             _del_message(key)
-            _hmset_test(key, {PICKUP_TIME: time.asctime()})
+            _set_key_value(key, {PICKUP_TIME: time.asctime()})
         else:
             logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}')
     finally:
@@ -227,7 +250,7 @@ def _exception_message(e):
     except:
         return str(e)
 
-def _hmset_test(key, value):
+def _set_key_value(key, value):
     if not redis_db.hmset(key, value):
         raise Exception(f'redis failed setting {key} to {value}')
 
