@@ -228,7 +228,7 @@ def _dequeue(operation, channel, reset_first):
 
         if message:
             _del_message(key)
-            _set_key_value(key, {PICKUP_TIME: time.asctime()})
+            _set_key_value(key, {PICKUP_TIME: time.asctime(), REPLY_FAST_POLLS_LEFT: ALLOWED_FAST_DEQUEUE_POLLS})
         else:
             logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}, polling seconds: {dequeue_polling_secs}')
     finally:
