@@ -51,8 +51,8 @@ logger.addHandler(logger_handler)
 PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
 DEQUEUE_TIMEOUT_SECS = float(os.environ.get('JUPYTER_DEQUEUE_TIMEOUT_SECS', 15)) # Something less that connection timeout, but long enough not to cause caller to create a dequeue blizzard
 FAST_DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_FAST_BRIDGE_POLL_SECS', 0.1)) # A fast polling rate means overall fast response to clients
-ALLOWED_FAST_DEQUEUE_POLLS = float(os.environ.get('JUPYTER_ALLOWED_FAST_DEQUEUE_POLLS', 10)) # Count of polls before client drops from FAST to SLOW
 SLOW_DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_SLOW_BRIDGE_POLL_SECS', 2)) # A slow polling rate means saving redis bandwidth
+ALLOWED_FAST_DEQUEUE_POLLS = int(os.environ.get('JUPYTER_ALLOWED_FAST_DEQUEUE_POLLS', 10)) # Count of polls before client drops from FAST to SLOW
 EXPIRE_SECS = 60 * 60 * 24 # How many seconds before an idle key dies
 
 # Redis message format:
@@ -210,6 +210,7 @@ def _dequeue(operation, channel, reset_first):
         if fast_polls_left is None:
             fast_polls_left = ALLOWED_FAST_DEQUEUE_POLLS
         else:
+            logger.debug(f'  raw fast_polls_left: {fast_polls_left}, key: {key}')
             fast_polls_left = int(fast_polls_left.decode('utf-8'))
         logger.debug(f'  fast_polls_left: {fast_polls_left}, type: {type(fast_polls_left)}')
         if fast_polls_left > 0:
