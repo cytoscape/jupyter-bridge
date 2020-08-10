@@ -55,8 +55,8 @@ SLOW_DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_SLOW_BRIDGE_POLL_SECS'
 ALLOWED_FAST_DEQUEUE_POLLS = int(os.environ.get('JUPYTER_ALLOWED_FAST_DEQUEUE_POLLS', 10)) # Count of polls before client drops from FAST to SLOW
 EXPIRE_SECS = 60 * 60 * 24 # How many seconds before an idle key dies
 
-DEQUEUE_BUSY_STATUS = 'busy'
-DEQUEUE_IDLE_STATUS = 'idle'
+DEQUEUE_BUSY_STATUS = b'busy'
+DEQUEUE_IDLE_STATUS = b'idle'
 
 HTTP_OK = 200
 HTTP_SYS_ERR = 500
