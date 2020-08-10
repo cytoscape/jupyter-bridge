@@ -212,7 +212,8 @@ def _dequeue(operation, channel, reset_first):
         else:
             fast_polls_left = int(fast_polls_left.decode('utf-8'))
         if fast_polls_left > 0:
-            _set_key_value(key, {REPLY_FAST_POLLS_LEFT: str(fast_polls_left - 1)})
+            fast_polls_left -= 1
+            _set_key_value(key, {REPLY_FAST_POLLS_LEFT: fast_polls_left})
             dequeue_polling_secs = FAST_DEQUEUE_POLLING_SECS
         else:
             dequeue_polling_secs = SLOW_DEQUEUE_POLLING_SECS
@@ -230,7 +231,7 @@ def _dequeue(operation, channel, reset_first):
             _del_message(key)
             _set_key_value(key, {PICKUP_TIME: time.asctime(), REPLY_FAST_POLLS_LEFT: ALLOWED_FAST_DEQUEUE_POLLS})
         else:
-            logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}, polling seconds: {dequeue_polling_secs}')
+            logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}, fast polls left: {fast_polls_left}, polling seconds: {dequeue_polling_secs}')
     finally:
         logger.debug(' out of _dequeue')
 
