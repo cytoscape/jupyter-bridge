@@ -155,6 +155,7 @@ function callCytoscape(callSpec) {
         } else {
             replyCytoscape(HTTP_SYS_ERR, 'BAD BROWSER OPEN', '')
         }
+        waitOnJupyterBridge()
     } else {
         var joiner = '?'
         for (let param in callSpec.params) {
