@@ -48,7 +48,6 @@ if (typeof Channel === 'undefined') { // ... but if not assigned, use a debuggin
     Channel = 1
 }
 
-const LocalCytoscape = 'http://127.0.0.1:1234'
 
 var httpR = new XMLHttpRequest();; // for sending reply to Jupyter-bridge
 var httpC = new XMLHttpRequest();; // for sending command to Cytoscape
@@ -59,6 +58,14 @@ const HTTP_SYS_ERR = 500
 const HTTP_TIMEOUT = 408
 const HTTP_TOO_MANY = 429
 
+
+ /* This function is useful if we want to rewrite the incoming URL to resolve just to our local one.
+    Doing this stops the Jupyter component from abusing this client to call out to endpoints other
+    than local Cytoscape. On the other hand, it makes it hard to detect when the Jupyter component
+    has specified a genuinely bad URL and really should get an error result. For now, we'll execute
+    the Jupyter-supplied URL and return the result, whatever it may be.
+
+const LocalCytoscape = 'http://127.0.0.1:1234'
 
 function parseURL(url) {
     var reURLInformation = new RegExp([
@@ -80,7 +87,7 @@ function parseURL(url) {
         hash: match[7]
     }
 }
-
+*/
 
 function replyCytoscape(replyStatus, replyStatusText, replyText) {
 
@@ -121,12 +128,12 @@ function callCytoscape(callSpec) {
             // HTTP operation or the native Python requests package is. This is minor, but
             // messes up tests that verify the exception type.
             replyCytoscape(httpC.status, httpC.statusText, httpC.responseText)
-            waitOnJupyterBridge(false)
+            waitOnJupyterBridge()
         }
     }
 
-    // Build up request to Cytoscape, making sure host is local
-//    too heavy handed: localURL = LocalCytoscape + parseURL(callSpec.url).pathname
+//  Build up request to Cytoscape, making sure host is local.
+//    Too heavy handed: localURL = LocalCytoscape + parseURL(callSpec.url).pathname
     var localURL = callSpec.url // Try using what was passed in ... is there a security risk??
 
     if (showDebug) {
@@ -142,22 +149,30 @@ function callCytoscape(callSpec) {
         }
     }
 
-    var joiner = '?'
-    for (let param in callSpec.params) {
-        localURL = localURL + joiner + param + '=' + encodeURIComponent(callSpec.params[param])
-        joiner = '&'
-    }
+    if (callSpec.command === 'webbrowser') {
+        if (window.open(callSpec.url)) {
+            replyCytoscape(HTTP_OK, 'OK', '')
+        } else {
+            replyCytoscape(HTTP_SYS_ERR, 'BAD BROWSER OPEN', '')
+        }
+    } else {
+        var joiner = '?'
+        for (let param in callSpec.params) {
+            localURL = localURL + joiner + param + '=' + encodeURIComponent(callSpec.params[param])
+            joiner = '&'
+        }
 
-    httpC.open(callSpec.command, localURL, true)
-    for (let header in callSpec.headers) {
-        httpC.setRequestHeader(header, callSpec.headers[header])
-    }
+        httpC.open(callSpec.command, localURL, true)
+        for (let header in callSpec.headers) {
+            httpC.setRequestHeader(header, callSpec.headers[header])
+        }
 
-    // Send request to Cytoscape ... reply goes to onreadystatechange handler
-    httpC.send(JSON.stringify(callSpec.data))
+        // Send request to Cytoscape ... reply goes to onreadystatechange handler
+        httpC.send(JSON.stringify(callSpec.data))
+    }
 }
 
-function waitOnJupyterBridge(resetFirst) {
+function waitOnJupyterBridge() {
 
     // Captures request from Jupyter bridge
     httpJ.onreadystatechange = function() {
@@ -173,7 +188,7 @@ function waitOnJupyterBridge(resetFirst) {
                     console.log('  shutting down because of redundant reader on channel: ' + Channel)
                 } else {
                     if (httpJ.status === HTTP_TIMEOUT) {
-                        waitOnJupyterBridge(false)
+                        waitOnJupyterBridge()
                     } else {
                         callCytoscape(JSON.parse(httpJ.responseText))
                     }
@@ -184,16 +199,13 @@ function waitOnJupyterBridge(resetFirst) {
                 }
                 // Bad responseText means something bad happened that we don't understand.
                 // Go wait on another request, as there's nothing to call Cytoscape with.
-                waitOnJupyterBridge(false)
+                waitOnJupyterBridge()
             }
         }
     }
 
     // Wait for request from Jupyter bridge
     var jupyterBridgeURL = JupyterBridge + '/dequeue_request?channel=' + Channel
-    if (resetFirst) {
-        jupyterBridgeURL = jupyterBridgeURL + '&reset'
-    }
     if (showDebug) {
         console.log('Starting dequeue on Jupyter bridge: ' + jupyterBridgeURL)
     }
@@ -203,7 +215,7 @@ function waitOnJupyterBridge(resetFirst) {
 
 // This kicks off a loop that ends by calling waitOnJupyterBridge again. This first call
 // ejects any dead readers before we start a read
-waitOnJupyterBridge(false) // Wait for message from Jupyter bridge, execute it, and return reply
+waitOnJupyterBridge() // Wait for message from Jupyter bridge, execute it, and return reply
 
 if (showDebug) {
     alert("Jupyter-bridge browser component is started on " + JupyterBridge + ', channel ' + Channel)
