@@ -36,7 +36,7 @@
     webbrowser.open()
  */
 
-var showDebug = false
+var showDebug = true
 if (showDebug) {
     alert("Starting Jupyter-bridge browser component")
 }
