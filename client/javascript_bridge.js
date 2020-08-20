@@ -1,5 +1,6 @@
  /*
     These functions serve as a connector between a remote Jupyter server and Cytoscape.
+    They run in the user's browser, which also shows the Jupyter Notebook.
 
     A remote Jupyter Notebook call to the py4cytoscape package is forwarded to the Jupyter Bridge,
     which is a standalone server. The functions in this connector execute in the Jupyter Notebook
@@ -30,10 +31,6 @@
 
     The request represents an HTTP call that py4cytoscape would normally make via HTTP directly
     to Cytoscape via localhost when both py4cytoscape and Cytoscape are running on the same machine.
-    The possible requests are:
-
-    Unhandled requests (so far):
-    webbrowser.open()
  */
 
 var showDebug = false
@@ -49,9 +46,9 @@ if (typeof Channel === 'undefined') { // ... but if not assigned, use a debuggin
 }
 
 
-var httpR = new XMLHttpRequest();; // for sending reply to Jupyter-bridge
-var httpC = new XMLHttpRequest();; // for sending command to Cytoscape
-var httpJ = new XMLHttpRequest();; // for fetching request from Jupyter-bridge
+var httpR = new XMLHttpRequest(); // for sending reply to Jupyter-bridge
+var httpC = new XMLHttpRequest(); // for sending command to Cytoscape
+var httpJ = new XMLHttpRequest(); // for fetching request from Jupyter-bridge
 
 const HTTP_OK = 200
 const HTTP_SYS_ERR = 500
