@@ -1093,7 +1093,7 @@
 		</g>
 		<g id="shape6-21" v:mID="6" v:groupContext="shape" transform="translate(321.632,-426.205)">
 			<title>Rounded rectangle.6</title>
-			<desc>Standalone Jupyter</desc>
+			<desc>Standalone Python</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(14):26"/>
 				<v:ud v:nameU="msvThemeColors" v:val="VT0(36):26"/>
@@ -1110,7 +1110,7 @@
 			<path d="M99.21 564.93 A14.1733 14.1733 -180 0 0 113.39 550.75 L113.39 494.06 A14.1733 14.1733 -180 0 0 99.21 479.89
 						 L14.17 479.89 A14.1733 14.1733 -180 0 0 0 494.06 L0 550.75 A14.1733 14.1733 -180 0 0 14.17 564.93 L99.21
 						 564.93 Z" class="st8"/>
-			<text x="8.62" y="494.69" class="st9" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Standalone Jupyter</text>		</g>
+			<text x="9.34" y="494.69" class="st9" v:langID="1033"><v:paragraph v:horizAlign="1"/><v:tabList/>Standalone Python</text>		</g>
 		<g id="shape8-28" v:mID="8" v:groupContext="shape" v:layerMember="0" transform="translate(156.972,-405.073)">
 			<title>Dynamic connector</title>
 			<v:userDefs>
