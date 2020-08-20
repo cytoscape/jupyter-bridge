@@ -39,8 +39,11 @@ if (showDebug) {
 }
 
 //const JupyterBridge = 'http://127.0.0.1:5000' // for testing against local Jupyter-bridge
-const JupyterBridge = 'https://jupyter-bridge.cytoscape.org' // for production
-var Channel; // Large number that could be defined by assignment pre-pended to this file
+var JupyterBridge; // URL of Jupyter-bridge server could be defined by assignment pre-pended to this file
+if (typeof JupyterBridge === 'undefined') {
+    JupyterBridge = 'https://jupyter-bridge.cytoscape.org' // for production
+}
+var Channel; // Unique constant that could be defined by assignment pre-pended to this file
 if (typeof Channel === 'undefined') { // ... but if not assigned, use a debugging value
     Channel = 1
 }
