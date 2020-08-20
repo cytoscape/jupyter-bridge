@@ -33,20 +33,20 @@ You can quickly test the connection between a remote Jupyter Notebook and a Cyto
 
 2. Create and execute a cell with the following content: 
 
-    import sys, IPython
-    !{sys.executable} -m pip uninstall -y py4cytoscape
-    !{sys.executable} -m pip install --upgrade git+https://github.com/bdemchak/py4cytoscape
-    import py4cytoscape as p4c
-    print('Loading Javascript client ... ' + str(p4c.get_browser_client_channel()))
-    browser_client_js = p4c.get_browser_client_js()
-    IPython.display.Javascript(browser_client_js) # Start browser client
+        import sys, IPython
+        !{sys.executable} -m pip uninstall -y py4cytoscape
+        !{sys.executable} -m pip install --upgrade git+https://github.com/bdemchak/py4cytoscape
+        import py4cytoscape as p4c
+        print('Loading Javascript client ... ' + str(p4c.get_browser_client_channel()))
+        browser_client_js = p4c.get_browser_client_js()
+        IPython.display.Javascript(browser_client_js) # Start browser client
 
 This will import the latest py4cytoscape module, then start the Jupyter-Bridge browser component. 
 
 3. Create and execute a cell with the following content:
 
-    print(dir(p4c))
-    p4c.cytoscape_version_info()
+        print(dir(p4c))
+        p4c.cytoscape_version_info()
 
 This will demonstrate that a connection exists between the remote Jupyter Notebook and local Cytoscape.
 
