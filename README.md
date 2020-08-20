@@ -9,11 +9,11 @@ response travels the reverse route.
 ## The Problem
 Currently, a Python-based workflow can leverage Cytoscape features by calling Cytoscape via py4cytoscape/CyREST over a 
 channel created on localhost (see below). This means that the workflow must be executing on the same workstation as 
-Cytoscape.
+Cytoscape (either as workstation-based standalone Python or Notebook).
 
 ![Figure 1](docs/images/Figure%201.svg)
 
-Because of network security (e.g., firewalls), there is no general way for a workflow executing in a remote Jupyter Notebook to leverage your workstation’s Cytoscape. This makes it hard to share notebook-based workflows and data sets.
+Because of network security (e.g., firewalls), there is no general way for a workflow executing in a remote server-based Jupyter Notebook to leverage your workstation’s Cytoscape. This makes it hard to share notebook-based workflows and data sets.
 
 ## The Solution
 Jupyter-Bridge allows a remote Jupyter Notebook to communicate with a workstation-based Cytoscape as if the Notebook were running on the Cytoscape workstation. A Jupyter Notebook passes a Cytoscape call to an independent Jupyter-Bridge server where it’s picked up by the Jupyter-Bridge browser component and is passed to Cytoscape. The Cytoscape response is returned via the opposite flow. As a result, workflows can reside in the cloud, access cloud resources, and yet still leverage Cytoscape features (see below). 
