@@ -56,8 +56,14 @@ This will import the latest py4cytoscape module, then start the Jupyter-Bridge b
 
 This will demonstrate that a connection exists between the remote Jupyter Notebook and local Cytoscape.
 
-# Discussion
+## Configuration
+Using the [installation](#installation) instructions below, you can create your own Jupyter-Bridge server addressable
+in your own domain. Once this server is running you can direct your Jupyter Notebook to use it
+by setting the JUPYTER_BRIDGE_URL environment variable for your notebook. The default value is
+https://jupyter-bridge.cytoscape.org. So long as the prefix is 'https:', you can choose whatever
+domain your server answers to. 
 
+# Discussion
 The Jupyter-Cytoscape link is *almost* possible via the Jupyter server's %%javascript magic combined with the 
 PC-based browser client's IPython.notebook.kernel.execute() function, except that the server won't see the 
 reply until all cells are executed -- too late.
@@ -82,3 +88,133 @@ common to all threads.
 Requests are assumed to be a JSON structure that describes the Cytoscape HTTP call. Replies are assumed to be the
 raw text returned by Cytoscape, and may include JSON that will be recovered by the requestor when it receives the
 reply.
+
+# Installation
+Jupyter-Bridge comes in two parts: the Jupyter-Bridge server and the browser component. This 
+section describes how to create a Jupyter-Bridge server. There is no installation procedure
+for the browser component -- it is automatically injected into the Jupyter Notebook web 
+page when the Notebook imports py4cytoscape.
+
+To create the Jupyter-Server (for https://jupyter-bridge.cytoscape.org):
+
+1. Create Ubuntu 18.04LTS with 15GB disk, 6GB RAM.
+
+1. Install linux packages
+ 
+   1. sudo apt update
+   1. sudo apt install nginx
+   1. sudo apt install git
+   1. sudo apt install redis-server
+   1. sudo apt install python3-pip python3-dev build-essential libssl-dev libffi-dev python3-setuptools
+
+1. Finish installing redis
+
+   1. In /etc/redis/redis.conf, change supervised no to supervised systemd
+   1. sudo systemctl enable redis-server
+   1. redis-cli
+      1. ping (response PONG)
+      1. quit
+   1. Restart linux to verify (using redis-cli) that redis restarts on reboot
+   
+1. Finish installing nginx
+
+   1. sudo systemctl enable nginx
+   1. From browser: http://<server ip>
+   1. Restart linux to verify (using browser) than nginx restarts on reboot
+
+1. Adjust firewall
+
+   1. sudo ufw allow 'Nginx Full'
+   1. sudo ufw allow 22/tcp
+   1. sudo ufw enable
+   1. sudo ufw status
+      1. should show both Nginx Full and Nginx Full (V6) allowd
+   1. From browser: http://<server ip>
+    
+1. Install Jupyter-bridge project
+
+   1. cd ~
+   1. git clone https://github.com/cytoscape/jupyter-bridge
+   1. chmod +x jupyter-bridge/dev/*.sh
+   1. Install nginx files
+      1. sudo cp ~/jupyter-bridge/server/nginx-config/jupyter-bridge.cytoscape.org /etc/nginx/sites-available/
+      1. sudo ln -s /etc/nginx/sites-available/jupyter-bridge.cytoscape.org /etc/nginx/sites-enabled/
+      1. In /etc/nginx/ sites-available/ jupyter-bridge.cytoscape.org
+         1. Change /home/bdemchak to whatever ~ resolves to
+         1. Note that /etc/letsencrypt lines are present and are commented out … they will be changed when a key exists
+            
+1. Install certificate
+
+   1. If you have your own certificate for jupyter-bridge.cytoscape.org, install it into certificate directory and edit /etc/nginx/sites-available/jupyter-bridge.cytoscape.org
+   1. Otherwise, follow the process in https://phoenixnap.com/kb/letsencrypt-nginx
+   1. From browser: https://jupyter-bridge.cytoscape.org
+      1. Response should be “502 Bad Gateway”
+
+1. Create Python Virtual Environment
+
+   1. pip3 install virtualenv
+   1. python3 -m virtualenv jupyter-bridge-env
+   1. source jupyter-bridge-env/bin/activate
+   1. pip install wheel
+   1. pip install uwsgi flask redis requests
+   1. deactivate
+
+1. Install uWSGI
+
+   1. sudo cp jupyter-bridge/server/uWSGI-config/jupyter-bridge.service /etc/systemd/system/
+   1. sudo vi /etc/systemd/system/jupyter-bridge.service
+      1. Change /home/bdemchak to whatever ~ resolves to
+      1. Change User=bdemchak to your user name
+
+1. Start Jupyter-bridge
+
+   1. sudo systemctl start jupyter-bridge
+   1. sudo systemctl enable jupyter-bridge
+   1. sudo systemctl status juptyer-bridge
+
+1. Test Juptyer-bridge
+
+   1. Using a browser: https://jupyter-bridge.cytoscape.org/ping
+      1. Response should be “pong x.x.x” where x.x.x is the jupyter-bridge version 
+   1. juptyer-bridge/dev/run-tests.sh
+      1. Run should take 3 minutes
+   1. Reboot and repeat the above
+
+# Administration
+Jupyter-Bridge requires no administration. However, it is open to inspection.
+
+To view the status of a channel:
+
+1. Start redis-cli from a terminal window
+1. keys '*' -- shows all channels. Channels appear in pairs, with ':request' and ':reply' appended to <channel>
+2. hgetall <channel>:request or <channel>:reply 
+
+Note that all channels expire and are removed automatically 24 hours after they are last written to.
+
+There are several useful scripts in jupyter-bridge/dev:
+
+| Script | Use |
+| :--- | :--- |
+|  restart-nginx.sh | Restarts nginx – should be rarely/never needed  |
+| restart-uwsgi.sh   | Restarts Jupyter-bridge – clears log files, too |
+| show-uwshi-log.sh   | Dumps Jupyter-bridge log file to console |
+| run-tests.sh   | Tests that Juptyer-bridge is running – takes 3 min |
+
+There are several useful logs:
+
+| Log | Use |
+| :--- | :--- |
+|  /var/log/nginx/*.log | nginx connect/error logs  |
+| /var/log/redis/redis-server.log   | redis liveness log |
+| ~/jupyter-bridge/server/jupyter-bridge.log   | record of all requests/replies to jupyter/bridge |
+| In Jupyter Notebook: logs/py4cytoscape.log   | record of all py4cytoscape requests/replies |
+| In browser console: let showDebug=true   | record of all browser interactions with jupyter-bridge and CyREST |
+
+
+# License
+Jupyter-Bridge is released under the MIT License (see [LICENSE](LICENSE) file):
+
+```
+    Copyright (c) 2018-2020 The Cytoscape Consortium
+    Barry Demchak <bdemchak@ucsd.edu>
+```
