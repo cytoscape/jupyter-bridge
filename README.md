@@ -95,7 +95,13 @@ section describes how to create a Jupyter-Bridge server. There is no installatio
 for the browser component -- it is automatically injected into the Jupyter Notebook web 
 page when the Notebook imports py4cytoscape.
 
-To create the Jupyter-Server (for https://jupyter-bridge.cytoscape.org):
+Also, for users, there is no need to create a Jupyter-Bridge server, as the Cytoscape project's
+Jupyter-Bridge server is always available (at https://jupyter-bridge.cytoscape.org) and is 
+pre-configured into py4cytoscape.
+
+If you would like to create your own Jupyter-Server or rebuild the Cytoscape project's server, see below.
+Note that these instructions are for re-creating the Cytoscape project's server. To create your own, 
+you'll need a URL and SSL certificate for it, and then apply them where they're called for.
 
 1. Create Ubuntu 18.04LTS with 15GB disk, 6GB RAM.
 
