@@ -33,7 +33,12 @@
     to Cytoscape via localhost when both py4cytoscape and Cytoscape are running on the same machine.
  */
 
-var showDebug = false
+const VERSION = '0.0.1'
+
+var showDebug; // Flag indicating whether to show Jupyter-bridge progress
+if (typeof showDebug === 'undefined') {
+    showDebug = false
+}
 if (showDebug) {
     alert("Starting Jupyter-bridge browser component")
 }
@@ -155,6 +160,9 @@ function callCytoscape(callSpec) {
         } else {
             replyCytoscape(HTTP_SYS_ERR, 'BAD BROWSER OPEN', '')
         }
+        waitOnJupyterBridge()
+    } else if (callSpec.command === 'version') {
+        replyCytoscape(HTTP_OK, 'OK', VERSION)
         waitOnJupyterBridge()
     } else {
         var joiner = '?'
