@@ -162,7 +162,8 @@ function callCytoscape(callSpec) {
         }
         waitOnJupyterBridge()
     } else if (callSpec.command === 'version') {
-        replyCytoscape(HTTP_OK, 'OK', '{"jupyterBridgeVersion": "VERSION"}')
+        replyCytoscape(HTTP_OK, 'OK',
+            JSON.stringify({"jupyterBridgeVersion": VERSION}))
         waitOnJupyterBridge()
     } else {
         var joiner = '?'
