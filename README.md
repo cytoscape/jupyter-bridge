@@ -107,9 +107,6 @@ in bold, and calls to the Jupyter-Bridge endpoints are also in bold. The endpoin
 sections below.
 
 ![Sequence Diagram](docs/images/Sequence.svg) 
-hi there
-
-<img src="docs/images/Sequence.svg" width="650" height="624"/>
 
 ## GET https://jupyter-bridge.cytoscape.org/ping
 Returns the version identifier (e.g., "pong 0.0.2") of the Jupyter-Bridge instance.
