@@ -129,7 +129,7 @@ def stats():
     csv = '\n'.join(list(sorted_csv.values()))
 
     return Response(
-        f"date,{COUNT}({REQUEST}),{REQUEST},{COUNT}({REPLY}),{REPLY}\n{csv}",
+        f"date,{COUNT}({REQUEST}),{REQUEST} bytes,{COUNT}({REPLY}),{REPLY} bytes\n{csv}",
         mimetype="text/csv",
         headers={"Content-disposition":
                      "attachment; filename=jupyter-bridge.csv"})
