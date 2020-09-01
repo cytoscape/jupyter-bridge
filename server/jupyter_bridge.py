@@ -74,6 +74,7 @@ REPLY_FAST_POLLS_LEFT = b'reply_fast_polls_left'
 REPLY = 'reply'
 REQUEST = 'request'
 STATISTIC = 'stat'
+COUNT = 'count'
 
 logger.debug('Starting Jupyter-bridge with python environment: \n' + '\n'.join(sys.path))
 logger.debug(f'Jupyter-bridge polling timeout: {DEQUEUE_TIMEOUT_SECS}, slow poll: {SLOW_DEQUEUE_POLLING_SECS}, fast poll: {FAST_DEQUEUE_POLLING_SECS}')
@@ -120,7 +121,7 @@ def stats():
     csv_dict = {}
     for day in keys:
         day_string = day.decode('utf-8')[len(STATISTIC) + 1 : ]
-        counts = ['' if count is None else count.decode('utf-8')   for count in redis_db.hmget(day, [REQUEST, REPLY])]
+        counts = ['' if count is None else count.decode('utf-8')   for count in redis_db.hmget(day, [f'{COUNT}:{REQUEST}', REQUEST, f'{COUNT}:{REPLY}', REPLY])]
         csv_dict[day_string] = f"{day_string},{','.join(counts)}"
 
     # Sort the statistics by date and create the list of dates and counts
@@ -128,7 +129,7 @@ def stats():
     csv = '\n'.join(list(sorted_csv.values()))
 
     return Response(
-        f"date,{REQUEST},{REPLY}\n{csv}",
+        f"date,{COUNT}({REQUEST}),{REQUEST},{COUNT}({REPLY}),{REPLY}\n{csv}",
         mimetype="text/csv",
         headers={"Content-disposition":
                      "attachment; filename=jupyter-bridge.csv"})
@@ -327,7 +328,9 @@ def _del_message(key, permissive=False):
         raise Exception(f'redis failed deleting {key} subkey {MESSAGE}')
 
 def _update_stats(operation, msg):
-    return redis_db.hincrby(time.strftime(f'{STATISTIC}:%Y-%m-%d'), operation, len(msg))
+    stat_key = time.strftime(f'{STATISTIC}:%Y-%m-%d')
+    redis_db.hincrby(stat_key, f'{COUNT}:{operation}', 1)
+    redis_db.hincrby(stat_key, operation, len(msg))
 
 def _expire(key):
     if redis_db.expire(key, EXPIRE_SECS) != 1:
