@@ -276,6 +276,8 @@ There are several useful scripts in jupyter-bridge/dev:
 | restart-uwsgi.sh   | Restarts Jupyter-Bridge – clears log files, too |
 | show-uwshi-log.sh   | Dumps Jupyter-Bridge log file to console |
 | run-tests.sh   | Tests that Juptyer-bridge is running – takes 3 min |
+| git-jupyter-bridge.sh   | Clears out existing Juptyer-Bridge and clones anew |
+
 
 There are several useful logs:
 
