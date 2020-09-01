@@ -1,8 +1,8 @@
-# Jupyter-bridge
-Jupyter-bridge is a Flask service that executes on a server accessible to both a remote Jupyter server and browser-based
-Jupyter client. Code running on the server calls Jupyter-bridge to queue a request that the client will execute, and the
-client will use Jupyter-bridge to return a reply. This enables a workflow running on remote Jupyter to execute functions
-on a PC-local Cytoscape -- the remote Jupyter runs the request through Jupyter-bridge, where it is picked up by 
+# Jupyter-Bridge
+Jupyter-Bridge is a Flask service that executes on a server accessible to both a remote Jupyter server and browser-based
+Jupyter client. Code running on the server calls Jupyter-Bridge to queue a request that the client will execute, and the
+client will use Jupyter-Bridge to return a reply. This enables a workflow running on remote Jupyter to execute functions
+on a PC-local Cytoscape -- the remote Jupyter runs the request through Jupyter-Bridge, where it is picked up by 
 Javascript code running on the Jupyter web page in the PC-local browser, which in turn calls Cytoscape. The Cytoscape
 response travels the reverse route.
 
@@ -79,15 +79,89 @@ Queuing requests is not allowed. If the server sends a request before the client
 Likewise, when the client sends a reply, it assumes the server will receive it before the client needs to send a
 subsequent reply.
 
-
-The state of each channel is maintained by the Jupyter-bridge running on an independent cloud server. Because
-Jupyter-bridge can service multiple channels simultaneously, it is multi-threaded ... a thread is started to service
+The state of each channel is maintained by the Jupyter-Bridge running on an independent cloud server. Because
+Jupyter-Bridge can service multiple channels simultaneously, it is multi-threaded ... a thread is started to service
 posting a request or reply, and fetching the request or reply. Requests and replies are stored in a Redis database
 common to all threads.
 
 Requests are assumed to be a JSON structure that describes the Cytoscape HTTP call. Replies are assumed to be the
 raw text returned by Cytoscape, and may include JSON that will be recovered by the requestor when it receives the
 reply.
+
+# Endpoints
+All service endpoints are accessible via Javascript running in a standard browser (and are therefore limited to HTTP 
+GET and POST). Endpoints available via HTTP GET can be invoked from the address bar of a browser.
+It's possible for a Jupyter-Bridge instance to be installed and reachable via any URL (see [installation](#installation)
+instructions below). For the sake of this documentation, we assume the canonical https://jupyter-bridge.cytoscape.org URL.
+
+## Channels
+Endpoints that queue and dequeue requests and replies accept a `channel` parameter, which clients can use
+to distinguish a message flow from flows for other clients. A message flow (request or reply) for a given channel is
+maintained for up to 24 hours before Jupyter-Bridge declares it to be abandoned, and drops it. When a Jupyter-Bridge
+instance restarts, it drops all message flows and starts afresh.
+
+## Calling Sequence
+The following diagram shows how messaging flows through the Jupyter-Bridge system, beginning with 
+a running Notebook and spanning to Cytoscape and back. Note that the Jupyter-Bridge role is
+in bold, and calls to the Jupyter-Bridge endpoints are also in bold. The endpoints are described in 
+sections below.
+
+![Sequence Diagram](docs/images/Sequence.svg) 
+hi there
+
+<img src="docs/images/Sequence.svg" width="650" height="624"/>
+
+## GET https://jupyter-bridge.cytoscape.org/ping
+Returns the version identifier (e.g., "pong 0.0.2") of the Jupyter-Bridge instance.
+
+## GET https://jupyter-bridge.cytoscape.org/stats
+Returns a CSV file ("jupyter-bridge.csv") containing daily request and reply statistics statistics. This endpoint is
+intended to be called from a browser that can then load the CSV into a spreadsheet program.
+
+## POST https://jupyter-bridge.cytoscape.org/queue_request?channel=<uuid>
+Accepts a payload that is saved for a client that will receive it by calling the `dequeue_request` endpoint with
+the same `channel` argument. While the payload can be any JSON, clients generally exchange JSON similar to:
+
+    {"command": "GET",
+     "url": "http://127.0.0.1:1234/v1,
+     "params": null,
+     "data": null,
+     "headers": ["Accept: application/json"]
+    }
+
+This endpoint does not queue requests. If a request is received before a client receives (and acts on) a pending reply,
+the prior reply will be lost and a log entry will be made.
+
+## POST https://jupyter-bridge.cytoscape.org/queue_reply?channel=<uuid>
+Accepts a payload that is saved for a client that will receive it by calling the `dequeue_reply` endpoint with the same
+`channel` argument. The payload can be any text or JSON, and a sample JSON is:
+
+    {"apiVersion": "v1",
+     "cytoscapeVersion": "3.8.1"
+    }
+
+This endpoint does not queue replies. If a reply is received before a client receives (and acts on) a prior reply,
+the prior reply will be ignored and an error will be returned.
+
+## GET https://jupyter-bridge.cytoscape.org/dequeue_request?channel=<uuid>
+Returns a payload posted as a request by calling the `queue_request` endpoint with the same `channel` argument. 
+
+This endpoint waits up to 15 seconds for a reply to be posted before returning an HTTP 408 status. The client should
+retry this endpoint until a reply is finally available.
+
+If this endpoint detects that two clients are waiting on a reply for the same channel, it returns an HTTP 429 status.
+The client should discontinue calling this endpoint. (This situation could happen if the browser allows multiple 
+threads to execute the same Jupyter-Bridge browser component code, as could happen if py4cytoscape is initialized 
+multiple time on the same browser page.)
+   
+## GET https://jupyter-bridge.cytoscape.org/dequeue_reply?channel=<uuid>
+Returns a payload posted as a reply by calling the `queue_reply` endpoint with the same `channel` argument. 
+
+This endpoint waits up to 15 seconds for a reply to be posted before returning an HTTP 408 status. The client should
+retry this endpoint until a reply is finally available.
+
+If this endpoint detects that two clients are waiting on a reply for the same channel, it returns an HTTP 429 status.
+The client should discontinue calling this endpoint. (This situation should never happen.)
 
 # Installation
 Jupyter-Bridge comes in two parts: the Jupyter-Bridge server and the browser component. This 
@@ -137,7 +211,7 @@ you'll need a URL and SSL certificate for it, and then apply them where they're 
       1. should show both Nginx Full and Nginx Full (V6) allowd
    1. From browser: http://<server ip>
     
-1. Install Jupyter-bridge project
+1. Install Jupyter-Bridge project
 
    1. cd ~
    1. git clone https://github.com/cytoscape/jupyter-bridge
@@ -172,7 +246,7 @@ you'll need a URL and SSL certificate for it, and then apply them where they're 
       1. Change /home/bdemchak to whatever ~ resolves to
       1. Change User=bdemchak to your user name
 
-1. Start Jupyter-bridge
+1. Start Jupyter-Bridge
 
    1. sudo systemctl start jupyter-bridge
    1. sudo systemctl enable jupyter-bridge
@@ -202,8 +276,8 @@ There are several useful scripts in jupyter-bridge/dev:
 | Script | Use |
 | :--- | :--- |
 |  restart-nginx.sh | Restarts nginx – should be rarely/never needed  |
-| restart-uwsgi.sh   | Restarts Jupyter-bridge – clears log files, too |
-| show-uwshi-log.sh   | Dumps Jupyter-bridge log file to console |
+| restart-uwsgi.sh   | Restarts Jupyter-Bridge – clears log files, too |
+| show-uwshi-log.sh   | Dumps Jupyter-Bridge log file to console |
 | run-tests.sh   | Tests that Juptyer-bridge is running – takes 3 min |
 
 There are several useful logs:
@@ -214,7 +288,7 @@ There are several useful logs:
 | /var/log/redis/redis-server.log   | redis liveness log |
 | ~/jupyter-bridge/server/jupyter-bridge.log   | record of all requests/replies to jupyter/bridge |
 | In Jupyter Notebook: logs/py4cytoscape.log   | record of all py4cytoscape requests/replies |
-| In browser console: let showDebug=true   | record of all browser interactions with jupyter-bridge and CyREST |
+| In browser console: let showDebug=true   | record of all browser interactions with Jupyter-Bridge and CyREST |
 
 
 # License
