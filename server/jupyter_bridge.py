@@ -73,6 +73,7 @@ REPLY_FAST_POLLS_LEFT = b'reply_fast_polls_left'
 # Redis key constants
 REPLY = 'reply'
 REQUEST = 'request'
+STATISTIC = 'stat'
 
 logger.debug('Starting Jupyter-bridge with python environment: \n' + '\n'.join(sys.path))
 logger.debug(f'Jupyter-bridge polling timeout: {DEQUEUE_TIMEOUT_SECS}, slow poll: {SLOW_DEQUEUE_POLLING_SECS}, fast poll: {FAST_DEQUEUE_POLLING_SECS}')
@@ -109,6 +110,28 @@ def ping():
         return Response(f'pong {JUPYTER_BRIDGE_VERSION}', status=200, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
         logger.debug('out of ping')
+
+@app.route('/stats', methods=['GET'])
+def stats():
+    # Find all statistics records
+    keys = redis_db.keys(f'{STATISTIC}:*')
+
+    # Create map of statistic lines
+    csv_dict = {}
+    for day in keys:
+        day_string = day.decode('utf-8')[len(STATISTIC) + 1 : ]
+        counts = ['' if count is None else count.decode('utf-8')   for count in redis_db.hmget(day, [REQUEST, REPLY])]
+        csv_dict[day_string] = f"{day_string},{','.join(counts)}"
+
+    # Sort the statistics by date and create the list of dates and counts
+    sorted_csv = dict(sorted(csv_dict.items(), key=lambda item: item[0]))
+    csv = '\n'.join(list(sorted_csv.values()))
+
+    return Response(
+        f"date,{REQUEST},{REPLY}\n{csv}",
+        mimetype="text/csv",
+        headers={"Content-disposition":
+                     "attachment; filename=jupyter-bridge.csv"})
 
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
@@ -216,6 +239,9 @@ def _enqueue(operation, channel, msg):
         if len(cur_value) == 0 or not MESSAGE in cur_value:
             _set_key_value(key, {MESSAGE: msg, PICKUP_TIME: '', POSTED_TIME: time.asctime()})
             _expire(key)
+
+            _update_stats(operation, msg)
+
         else:
             raise Exception(f'Channel {key} contains unprocessed message')
     finally:
@@ -300,6 +326,8 @@ def _del_message(key, permissive=False):
     if redis_db.hdel(key, MESSAGE) != 1 and not permissive:
         raise Exception(f'redis failed deleting {key} subkey {MESSAGE}')
 
+def _update_stats(operation, msg):
+    return redis_db.hincrby(time.strftime(f'{STATISTIC}:%Y-%m-%d'), operation, len(msg))
 
 def _expire(key):
     if redis_db.expire(key, EXPIRE_SECS) != 1:
