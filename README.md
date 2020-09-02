@@ -108,6 +108,11 @@ sections below.
 
 ![Sequence Diagram](docs/images/Sequence.png) 
 
+Hi
+
+![Sequence Diagram](docs/images/Sequence.svg) 
+
+
 ## GET https://jupyter-bridge.cytoscape.org/ping
 Returns the version identifier (e.g., "pong 0.0.2") of the Jupyter-Bridge instance.
 
