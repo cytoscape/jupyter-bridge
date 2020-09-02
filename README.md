@@ -110,7 +110,7 @@ sections below.
 
 Hi
 
-![Sequence Diagram](docs/images/Sequence.svg) 
+![Sequence Diagram1](docs/images/Sequence.svg) 
 
 
 ## GET https://jupyter-bridge.cytoscape.org/ping
