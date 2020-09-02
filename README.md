@@ -106,12 +106,7 @@ a running Notebook and spanning to Cytoscape and back. Note that the Jupyter-Bri
 in bold, and calls to the Jupyter-Bridge endpoints are also in bold. The endpoints are described in 
 sections below.
 
-![Sequence Diagram](docs/images/Sequence.png) 
-
-Hi
-
-![Sequence Diagram1](docs/images/Sequence.svg) 
-
+![Calling Sequence](docs/images/Sequence.svg) 
 
 ## GET https://jupyter-bridge.cytoscape.org/ping
 Returns the version identifier (e.g., "pong 0.0.2") of the Jupyter-Bridge instance.
