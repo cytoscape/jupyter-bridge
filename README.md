@@ -101,10 +101,16 @@ maintained for up to 24 hours before Jupyter-Bridge declares it to be abandoned,
 instance restarts, it drops all message flows and starts afresh.
 
 ## Calling Sequence
-The following diagram shows how messaging flows through the Jupyter-Bridge system, beginning with 
+The following diagrams show how messaging flows through the Jupyter-Bridge system, beginning with 
 a running Notebook and spanning to Cytoscape and back. Note that the Jupyter-Bridge role is
 in bold, and calls to the Jupyter-Bridge endpoints are also in bold. The endpoints are described in 
 sections below.
+
+This is the simpler diagram:
+
+![Simple Calling Sequence](docs/images/Sequence Simple.png) 
+
+This diagram is more complex, but more complete:
 
 ![Calling Sequence](docs/images/Sequence.png) 
 
