@@ -108,7 +108,7 @@ sections below.
 
 This is the simpler diagram:
 
-![Simple Calling Sequence](docs/images/Sequence Simple.png) 
+![Simple Calling Sequence](docs/images/SequenceSimple.png) 
 
 This diagram is more complex, but more complete:
 
