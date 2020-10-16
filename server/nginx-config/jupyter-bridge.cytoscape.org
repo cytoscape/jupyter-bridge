@@ -1,6 +1,9 @@
 server {
     server_name jupyter-bridge.cytoscape.org;
 
+# set client body size to 50M #
+    client_max_body_size 50M;
+
     location / {
         include uwsgi_params;
         uwsgi_pass unix:/home/bdemchak/jupyter-bridge/server/jupyter-bridge.sock;
