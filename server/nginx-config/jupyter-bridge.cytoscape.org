@@ -1,8 +1,8 @@
 server {
     server_name jupyter-bridge.cytoscape.org;
 
-# set client body size to 50M #
-    client_max_body_size 50M;
+# set client body size to 100M #
+    client_max_body_size 100M;
 
     location / {
         include uwsgi_params;
