@@ -98,12 +98,15 @@ function replyCytoscape(replyStatus, replyStatusText, replyText) {
 
     // Clean up after Jupyter bridge accepts reply
     httpR.onreadystatechange = function() {
-        console.log(' status: ' + httpR.status)
         if (httpR.readyState === 4) {
             if (showDebug) {
                 console.log(' status: ' + httpR.status + ', reply: ' + httpR.responseText)
             }
         }
+    }
+
+    httpR.onerror = function() {
+        console.log(' error status: ' + httpR.status + ', reply: ' + httpR.responseText)
     }
 
     var reply = {'status': replyStatus, 'reason': replyStatusText, 'text': replyText}
@@ -124,7 +127,7 @@ function callCytoscape(callSpec) {
     httpC.onreadystatechange = function() {
         if (httpC.readyState === 4) {
             if (showDebug) {
-                console.log(' status: ' + httpC.status + ', statusText: ' + httpC.statusText + ', reply: ' + httpC.responseText)
+                console.log(' status from CyREST: ' + httpC.status + ', statusText: ' + httpC.statusText + ', reply: ' + httpC.responseText)
             }
             // Note that httpC.status is 0 if the URL can't be reached *OR* there is a CORS violation.
             // I wish I could tell the difference because for a CORS violation, I'd return a 404,
@@ -143,7 +146,7 @@ function callCytoscape(callSpec) {
     var localURL = callSpec.url // Try using what was passed in ... is there a security risk??
 
     if (showDebug) {
-        console.log('Command: ' + callSpec.command + ' (' + localURL + ')')
+        console.log('Command to CyREST: ' + callSpec.command + ' (' + localURL + ')')
         if (callSpec.params) {
             console.log(' params: ' + JSON.stringify(callSpec.params))
         }
