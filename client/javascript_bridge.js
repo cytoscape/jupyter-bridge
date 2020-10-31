@@ -33,7 +33,7 @@
     to Cytoscape via localhost when both py4cytoscape and Cytoscape are running on the same machine.
  */
 
-const VERSION = '0.0.1'
+const VERSION = '0.0.2'
 
 var showDebug; // Flag indicating whether to show Jupyter-bridge progress
 if (typeof showDebug === 'undefined') {
@@ -55,6 +55,7 @@ if (typeof Channel === 'undefined') { // ... but if not assigned, use a debuggin
 
 
 var httpR = new XMLHttpRequest(); // for sending reply to Jupyter-bridge
+var httpRE = new XMLHttpRequest(); // for sending backup error reply to Jupyter-bridge
 var httpC = new XMLHttpRequest(); // for sending command to Cytoscape
 var httpJ = new XMLHttpRequest(); // for fetching request from Jupyter-bridge
 
@@ -100,13 +101,26 @@ function replyCytoscape(replyStatus, replyStatusText, replyText) {
     httpR.onreadystatechange = function() {
         if (httpR.readyState === 4) {
             if (showDebug) {
-                console.log(' status: ' + httpR.status + ', reply: ' + httpR.responseText)
+                console.log(' status from queue_reply: ' + httpR.status + ', reply: ' + httpR.responseText)
             }
         }
     }
 
     httpR.onerror = function() {
-        console.log(' error status: ' + httpR.status + ', reply: ' + httpR.responseText)
+        // Clean up after Jupyter bridge accepts backup reply
+        httpRE.onreadystatechange = function() {
+            if (httpRE.readyState === 4) {
+                if (showDebug) {
+                    console.log(' status from backup queue_reply: ' + httpRE.status + ', reply: ' + httpRE.responseText)
+                }
+            }
+        }
+
+        console.log(' error from queue_reply -- could be Jupyter-Bridge server reject')
+        var errReply = {'status': HTTP_SYS_ERR, 'reason': '', 'text': 'Error returning response -- could be too long for Jupyter-Bridge server'}
+        httpRE.open('POST', jupyterBridgeURL, true)
+        httpRE.setRequestHeader('Content-Type', 'text/plain')
+        httpRE.send(JSON.stringify(ErrReply))
     }
 
     var reply = {'status': replyStatus, 'reason': replyStatusText, 'text': replyText}
@@ -192,7 +206,7 @@ function waitOnJupyterBridge() {
     httpJ.onreadystatechange = function() {
         if (httpJ.readyState === 4) {
             if (showDebug) {
-                console.log(' status: ' + httpJ.status + ', reply: ' + httpJ.responseText)
+                console.log(' status from dequeue_request: ' + httpJ.status + ', reply: ' + httpJ.responseText)
             }
             try {
                 if (httpJ.status == HTTP_TOO_MANY) {
