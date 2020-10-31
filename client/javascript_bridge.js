@@ -116,8 +116,10 @@ function replyCytoscape(replyStatus, replyStatusText, replyText) {
             }
         }
 
-        console.log(' error from queue_reply -- could be Jupyter-Bridge server reject')
-        var errReply = {'status': HTTP_SYS_ERR, 'reason': '', 'text': 'Error returning response -- could be too long for Jupyter-Bridge server'}
+        if (showDebug) {
+            console.log(' error from queue_reply -- could be Jupyter-Bridge server reject')
+        }
+        var errReply = {'status': HTTP_SYS_ERR, 'reason': 'Jupyter-Bridge rejected reply', 'text': 'Possibly reply is too long for Jupyter-Bridge server'}
         httpRE.open('POST', jupyterBridgeURL, true)
         httpRE.setRequestHeader('Content-Type', 'text/plain')
         httpRE.send(JSON.stringify(errReply))
