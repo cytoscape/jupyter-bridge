@@ -98,6 +98,7 @@ function replyCytoscape(replyStatus, replyStatusText, replyText) {
 
     // Clean up after Jupyter bridge accepts reply
     httpR.onreadystatechange = function() {
+        console.log(' status: ' + httpR.status)
         if (httpR.readyState === 4) {
             if (showDebug) {
                 console.log(' status: ' + httpR.status + ', reply: ' + httpR.responseText)
