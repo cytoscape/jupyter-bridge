@@ -120,7 +120,7 @@ function replyCytoscape(replyStatus, replyStatusText, replyText) {
         var errReply = {'status': HTTP_SYS_ERR, 'reason': '', 'text': 'Error returning response -- could be too long for Jupyter-Bridge server'}
         httpRE.open('POST', jupyterBridgeURL, true)
         httpRE.setRequestHeader('Content-Type', 'text/plain')
-        httpRE.send(JSON.stringify(ErrReply))
+        httpRE.send(JSON.stringify(errReply))
     }
 
     var reply = {'status': replyStatus, 'reason': replyStatusText, 'text': replyText}
