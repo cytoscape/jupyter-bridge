@@ -27,6 +27,12 @@ As with py4cytoscape running on a workstation, each remote py4cytoscape can pair
 → _Bonus Question:_ Why couldn’t this have been done via a `%%javascript` cell in any Jupyter Notebook?? _Answer:_ The Cytoscape call could have, but because of the way Jupyter manages its ZeroMQ queues, the Cytoscape reply could not be returned to the workflow until after all cells had finished executing. Cytoscape workflows need the reply for one request before it can proceed to the next.
 
 ## Trying out Jupyter-Bridge
+You can quickly determine whether Jupyter-Bridge is up by using a common browser:
+
+[https://jupyter-bridge.cytoscape.org/ping](https://jupyter-bridge.cytoscape.org/ping) -- should return a "pong" message
+
+[https://jupyter-bridge.cytoscape.org/stats](https://jupyter-bridge.cytoscape.org/stats) -- should return a CSV file showing Jupyter-Bridge usage over time
+
 You can quickly test the connection between a remote Jupyter Notebook and a Cytoscape running on your workstation by following these steps:
 
 1. Create a new Python 3.7+ Jupyter Notebook on a remote server (e.g., GenePattern Notebook, Google Colab, etc) and start Cytoscape on the local workstation.
