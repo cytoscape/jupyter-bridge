@@ -29,9 +29,9 @@ As with py4cytoscape running on a workstation, each remote py4cytoscape can pair
 ## Trying out Jupyter-Bridge
 You can quickly determine whether Jupyter-Bridge is up by using a common browser:
 
-[https://jupyter-bridge.cytoscape.org/ping](https://jupyter-bridge.cytoscape.org/ping) -- should return a "pong" message
+        [https://jupyter-bridge.cytoscape.org/ping](https://jupyter-bridge.cytoscape.org/ping) -- should return a "pong" message
 
-[https://jupyter-bridge.cytoscape.org/stats](https://jupyter-bridge.cytoscape.org/stats) -- should return a CSV file showing Jupyter-Bridge usage over time
+        [https://jupyter-bridge.cytoscape.org/stats](https://jupyter-bridge.cytoscape.org/stats) -- should return a CSV file showing Jupyter-Bridge usage over time
 
 You can quickly test the connection between a remote Jupyter Notebook and a Cytoscape running on your workstation by following these steps:
 
