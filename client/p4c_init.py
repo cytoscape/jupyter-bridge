@@ -15,4 +15,4 @@ import py4cytoscape as p4c
 # Start the Jupyter-Bridge to enable communication with Cytoscape on workstation
 browser_client_js = p4c.get_browser_client_js(True)
 print(f'Loading Javascript client ... {p4c.get_browser_client_channel()} on {p4c.get_jupyter_bridge_url()}')
-IPython.display.Javascript(browser_client_js) # Start browser client'
+# Caller must do this part: IPython.display.Javascript(browser_client_js) # Start browser client'
