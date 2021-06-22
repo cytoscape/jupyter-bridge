@@ -7,7 +7,6 @@ ModuleSpace = '' if RunningInCOLAB else '--user'
 # Install py4cytoscape module into python space
 get_ipython().run_line_magic('run', '-m pip uninstall -y py4cytoscape')
 get_ipython().run_line_magic('run', '-m pip install ' + ModuleSpace + ' py4cytoscape')
-get_ipython().run_line_magic('run', '-m pip show py4cytoscape')
 import py4cytoscape as p4c
 
 # Start the Jupyter-Bridge to enable communication with Cytoscape on workstation
