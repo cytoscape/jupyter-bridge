@@ -38,7 +38,7 @@ from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
-JUPYTER_BRIDGE_VERSION = '0.0.2'
+JUPYTER_BRIDGE_VERSION = '0.0.3'
 
 
 # Set up detail logger
@@ -232,10 +232,10 @@ def dequeue_reply():
         logger.debug('out of dequeue_reply')
 
 def _enqueue(operation, channel, msg):
-    logger.debug(f' into _enqueue: {operation}, channel: {channel}, msg: {msg}')
+    key = f'{channel}:{operation}'
+    logger.debug(f' into _enqueue: key: {key}, msg: {msg}')
 
     try:
-        key = f'{channel}:{operation}'
         cur_value = redis_db.hgetall(key)
         if len(cur_value) == 0 or not MESSAGE in cur_value:
             _set_key_value(key, {MESSAGE: msg, PICKUP_TIME: '', POSTED_TIME: time.asctime()})
@@ -249,10 +249,10 @@ def _enqueue(operation, channel, msg):
         logger.debug(' out of _enqueue')
 
 def _dequeue(operation, channel, reset_first):
-    logger.debug(f' into _dequeue: {operation}, channel: {channel}, reset_first: {reset_first}')
+    key = f'{channel}:{operation}'
+    logger.debug(f' into _dequeue: key: {key}, reset_first: {reset_first}')
     message = None
     valid_reader = True
-    key = f'{channel}:{operation}'
     try:
         dequeue_busy = redis_db.hget(key, DEQUEUE_BUSY) or DEQUEUE_IDLE_STATUS
         if dequeue_busy == DEQUEUE_BUSY_STATUS:
@@ -263,6 +263,7 @@ def _dequeue(operation, channel, reset_first):
             if reset_first: # Clear out any (presumably dead) reader ... assume first dequeue precedes first enqueue
                 _del_message(key, permissive=True)
             _set_key_value(key, {PICKUP_TIME: ''})
+            _expire(key)
 
             # Use a heuristic to figure out how often to poll redis for a request or reply. This is useful because
             # there are known to be zombie waiters, particularly because the browser create virtual machines
@@ -294,6 +295,7 @@ def _dequeue(operation, channel, reset_first):
             # TODO: Polling is good enough for now, but for scaling, replace with await
 
             if message:
+                logger.debug(f'  _dequeue returns: {message}')
                 _del_message(key)
                 _set_key_value(key, {PICKUP_TIME: time.asctime(), REPLY_FAST_POLLS_LEFT: ALLOWED_FAST_DEQUEUE_POLLS})
             else:
