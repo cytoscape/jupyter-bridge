@@ -352,13 +352,14 @@ def _expire(key):
         raise Exception(f'redis failed expiring {key}')
 
 import threading
+import os
 transaction_id = 0 # useful for matching messages during debug
 transaction_sem = threading.Semaphore() # Environment may have multiple threads calling this module
 
 def _get_transaction_id():
     global transaction_id
     transaction_sem.acquire()
-    transaction = transaction_id
+    transaction = f'{os.getpid()}:{transaction_id}'
     transaction_id += 1
     transaction_sem.release()
     return transaction
