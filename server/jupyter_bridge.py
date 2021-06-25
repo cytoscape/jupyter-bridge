@@ -48,8 +48,6 @@ logger_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(nam
 logger.setLevel('DEBUG')
 logger.addHandler(logger_handler)
 
-transaction_id = 0 # useful for matching messages during debug
-
 PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
 DEQUEUE_TIMEOUT_SECS = float(os.environ.get('JUPYTER_DEQUEUE_TIMEOUT_SECS', 15)) # Something less that connection timeout, but long enough not to cause caller to create a dequeue blizzard
 FAST_DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_FAST_BRIDGE_POLL_SECS', 0.1)) # A fast polling rate means overall fast response to clients
@@ -353,10 +351,17 @@ def _expire(key):
     if redis_db.expire(key, EXPIRE_SECS) != 1:
         raise Exception(f'redis failed expiring {key}')
 
+import threading
+transaction_id = 0 # useful for matching messages during debug
+transaction_sem = threading.Semaphore() # Environment may have multiple threads calling this module
+
 def _get_transaction_id():
     global transaction_id
+    transaction_sem.acquire()
+    transaction = transaction_id
     transaction_id += 1
-    return transaction_id
+    transaction_sem.release()
+    return transaction
 
 
 if __name__=='__main__':
