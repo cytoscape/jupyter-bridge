@@ -18,6 +18,7 @@ if "_PY4CYTOSCAPE_CHANNEL" in globals():
   browser_client_js = ''
 else:
   if "_PY4CYTOSCAPE_DEBUG_BROWSER" not in globals(): _PY4CYTOSCAPE_DEBUG_BROWSER = False
+  _PY4CYTOSCAPE_DEBUG_BROWSER = True
   browser_client_js = p4c.get_browser_client_js(_PY4CYTOSCAPE_DEBUG_BROWSER)
   _PY4CYTOSCAPE_CHANNEL = p4c.get_browser_client_channel()
   print(f'Loading Javascript client ... {_PY4CYTOSCAPE_CHANNEL} on {p4c.get_jupyter_bridge_url()}')
