@@ -246,8 +246,8 @@ def dequeue_reply():
 
 def _enqueue(local_transaction, operation, channel, msg):
     key = f'{channel}:{operation}'
-    logger.debug(f' into _enqueue ({local_transaction}): key: {key}, msg: {msg}')
-
+    logger.debug(f' into _enqueue ({local_transaction}): key: {key}')
+    logger.debug(f'  _enqueue ({local_transaction}) sends: {msg}')
     try:
         cur_value = redis_db.hgetall(key)
         if len(cur_value) == 0 or not MESSAGE in cur_value:
@@ -351,21 +351,17 @@ def _expire(key):
     if redis_db.expire(key, EXPIRE_SECS) != 1:
         raise Exception(f'redis failed expiring {key}')
 
-import threading
 import os
 transaction_id = 0 # useful for matching messages during debug
-transaction_sem = threading.Semaphore() # Environment may have multiple threads calling this module
 
 def _get_transaction_id():
     # A server may instantiate this service for each thread it creates. So,
     # creating an increasing transaction ID isn't enough, as each thread gets
     # its own copy. To create a unique ID, include the process ID, too.
     global transaction_id
-    transaction_sem.acquire()
-    transaction = f'{os.getpid()}:{transaction_id}'
     transaction_id += 1
-    transaction_sem.release()
-    return transaction
+    return f'{os.getpid()}:{transaction_id}'
+
 
 
 if __name__=='__main__':
