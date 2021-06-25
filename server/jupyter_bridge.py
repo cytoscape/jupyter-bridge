@@ -357,6 +357,9 @@ transaction_id = 0 # useful for matching messages during debug
 transaction_sem = threading.Semaphore() # Environment may have multiple threads calling this module
 
 def _get_transaction_id():
+    # A server may instantiate this service for each thread it creates. So,
+    # creating an increasing transaction ID isn't enough, as each thread gets
+    # its own copy. To create a unique ID, include the process ID, too.
     global transaction_id
     transaction_sem.acquire()
     transaction = f'{os.getpid()}:{transaction_id}'
