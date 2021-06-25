@@ -13,6 +13,13 @@ if 'py4cytoscape' not in sys.modules: # Check to see if py4cytoscape already loa
 import py4cytoscape as p4c
 
 # Start the Jupyter-Bridge to enable communication with Cytoscape on workstation
-browser_client_js = p4c.get_browser_client_js(True)
-print(f'Loading Javascript client ... {p4c.get_browser_client_channel()} on {p4c.get_jupyter_bridge_url()}')
+if "_PY4CYTOSCAPE_CHANNEL" in globals():
+  print(f'Javascript client already loaded on channel {_PY4CYTOSCAPE_CHANNEL} ... skipping client reload')
+  browser_client_js = ''
+else:
+  if "_PY4CYTOSCAPE_DEBUG_BROWSER" not in globals(): _PY4CYTOSCAPE_DEBUG_BROWSER = False
+  browser_client_js = p4c.get_browser_client_js(_PY4CYTOSCAPE_DEBUG_BROWSER)
+  _PY4CYTOSCAPE_CHANNEL = p4c.get_browser_client_channel()
+  print(f'Loading Javascript client ... {_PY4CYTOSCAPE_CHANNEL} on {p4c.get_jupyter_bridge_url()}')
+
 # Caller must do this part: IPython.display.Javascript(browser_client_js) # Start browser client'
