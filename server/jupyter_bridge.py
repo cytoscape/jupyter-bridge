@@ -48,6 +48,8 @@ logger_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(nam
 logger.setLevel('DEBUG')
 logger.addHandler(logger_handler)
 
+transaction_id = 0 # useful for matching messages during debug
+
 PAD_MESSAGE = True # For troubleshooting truncated FIN terminator that loses headers and data
 DEQUEUE_TIMEOUT_SECS = float(os.environ.get('JUPYTER_DEQUEUE_TIMEOUT_SECS', 15)) # Something less that connection timeout, but long enough not to cause caller to create a dequeue blizzard
 FAST_DEQUEUE_POLLING_SECS = float(os.environ.get('JUPYTER_FAST_BRIDGE_POLL_SECS', 0.1)) # A fast polling rate means overall fast response to clients
@@ -114,29 +116,36 @@ def ping():
 
 @app.route('/stats', methods=['GET'])
 def stats():
-    # Find all statistics records
-    keys = redis_db.keys(f'{STATISTIC}:*')
+    logger.debug('into stats')
 
-    # Create map of statistic lines
-    csv_dict = {}
-    for day in keys:
-        day_string = day.decode('utf-8')[len(STATISTIC) + 1 : ]
-        counts = ['' if count is None else count.decode('utf-8')   for count in redis_db.hmget(day, [f'{COUNT}:{REQUEST}', REQUEST, f'{COUNT}:{REPLY}', REPLY])]
-        csv_dict[day_string] = f"{day_string},{','.join(counts)}"
+    try:
+        # Find all statistics records
+        keys = redis_db.keys(f'{STATISTIC}:*')
 
-    # Sort the statistics by date and create the list of dates and counts
-    sorted_csv = dict(sorted(csv_dict.items(), key=lambda item: item[0]))
-    csv = '\n'.join(list(sorted_csv.values()))
+        # Create map of statistic lines
+        csv_dict = {}
+        for day in keys:
+            day_string = day.decode('utf-8')[len(STATISTIC) + 1 : ]
+            counts = ['' if count is None else count.decode('utf-8')   for count in redis_db.hmget(day, [f'{COUNT}:{REQUEST}', REQUEST, f'{COUNT}:{REPLY}', REPLY])]
+            csv_dict[day_string] = f"{day_string},{','.join(counts)}"
 
-    return Response(
-        f"date,{COUNT}({REQUEST}),{REQUEST} bytes,{COUNT}({REPLY}),{REPLY} bytes\n{csv}",
-        mimetype="text/csv",
-        headers={"Content-disposition":
-                     "attachment; filename=jupyter-bridge.csv"})
+        # Sort the statistics by date and create the list of dates and counts
+        sorted_csv = dict(sorted(csv_dict.items(), key=lambda item: item[0]))
+        csv = '\n'.join(list(sorted_csv.values()))
+
+        return Response(
+            f"date,{COUNT}({REQUEST}),{REQUEST} bytes,{COUNT}({REPLY}),{REPLY} bytes\n{csv}",
+            mimetype="text/csv",
+            headers={"Content-disposition":
+                         "attachment; filename=jupyter-bridge.csv"})
+    finally:
+        logger.debug('out of stats')
 
 @app.route('/queue_request', methods=['POST'])
 def queue_request():
-    logger.debug('into queue_request')
+    local_transaction = _get_transaction_id()
+
+    logger.debug(f'into queue_request ({local_transaction})')
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
@@ -149,48 +158,52 @@ def queue_request():
                 reply_key = f'{channel}:{REPLY}'
                 last_reply = redis_db.hget(reply_key, MESSAGE)
                 if last_reply:
-                    logger.debug(f'Warning: Reply not picked up before new request. Reply: {last_reply}, Request: {message}')
+                    logger.debug(f'Warning: queue_request ({local_transaction}) Reply not picked up before new request. Reply: {last_reply}, Request: {message}')
                     _del_message(reply_key)
 
-                _enqueue(REQUEST, channel, message)
+                _enqueue(local_transaction, REQUEST, channel, message)
                 return Response('', status=HTTP_OK, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be application/json')
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        logger.debug(f"queue_request exception {e!r}")
+        logger.debug(f'queue_request ({local_transaction}) exception {e!r}')
         return Response(_exception_message(e), status=HTTP_SYS_ERR, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
-        logger.debug('out of queue_request')
+        logger.debug(f'out of queue_request ({local_transaction})')
 
 @app.route('/queue_reply', methods=['POST'])
 def queue_reply():
-    logger.debug('into queue_reply')
+    local_transaction = _get_transaction_id()
+
+    logger.debug(f'into queue_reply ({local_transaction})')
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
             if request.content_type.startswith('text/plain'):
                 message = request.get_data()
-                _enqueue(REPLY, channel, message)
+                _enqueue(local_transaction, REPLY, channel, message)
                 return Response('', status=HTTP_OK, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
             else:
                 raise Exception('Payload must be text/plain')
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        logger.debug(f"queue_reply exception {e!r}")
+        logger.debug(f'queue_reply ({local_transaction}) exception {e!r}')
         return Response(_exception_message(e), status=HTTP_SYS_ERR, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
-        logger.debug('out of queue_reply')
+        logger.debug(f'out of queue_reply ({local_transaction})')
 
 @app.route('/dequeue_request', methods=['GET'])
 def dequeue_request():
-    logger.debug('into dequeue_request')
+    local_transaction = _get_transaction_id()
+
+    logger.debug(f'into dequeue_request ({local_transaction})')
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
-            message, valid_reader = _dequeue(REQUEST, channel, 'reset' in request.args) # Will block waiting for message
+            message, valid_reader = _dequeue(local_transaction, REQUEST, channel, 'reset' in request.args) # Will block waiting for message
             if valid_reader:
                 if message is None:
                     return Response('', status=HTTP_TIMEOUT, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
@@ -202,18 +215,20 @@ def dequeue_request():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        logger.debug(f"dequeue_request exception {e!r}")
+        logger.debug(f'dequeue_request ({local_transaction}) exception {e!r}')
         return Response(_exception_message(e), status=HTTP_SYS_ERR, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
-        logger.debug('out of dequeue_request')
+        logger.debug(f'out of dequeue_request ({local_transaction})')
 
 @app.route('/dequeue_reply', methods=['GET'])
 def dequeue_reply():
-    logger.debug('into dequeue_reply')
+    local_transaction = _get_transaction_id()
+
+    logger.debug(f'into dequeue_reply ({local_transaction})')
     try:
         if 'channel' in request.args:
             channel = request.args['channel']
-            message, valid_reader = _dequeue(REPLY, channel, 'reset' in request.args) # Will block waiting for message
+            message, valid_reader = _dequeue(local_transaction, REPLY, channel, 'reset' in request.args) # Will block waiting for message
             if valid_reader:
                 if message is None:
                     return Response('', status=HTTP_TIMEOUT, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
@@ -226,14 +241,14 @@ def dequeue_reply():
         else:
             raise Exception('Channel is missing in parameter list')
     except Exception as e:
-        logger.debug(f"dequeue_reply exception {e!r}")
+        logger.debug(f'dequeue_reply ({local_transaction}) exception {e!r}')
         return Response(_exception_message(e), status=HTTP_SYS_ERR, content_type='text/plain', headers={'Access-Control-Allow-Origin': '*'})
     finally:
-        logger.debug('out of dequeue_reply')
+        logger.debug(f'out of dequeue_reply ({local_transaction})')
 
-def _enqueue(operation, channel, msg):
+def _enqueue(local_transaction, operation, channel, msg):
     key = f'{channel}:{operation}'
-    logger.debug(f' into _enqueue: key: {key}, msg: {msg}')
+    logger.debug(f' into _enqueue ({local_transaction}): key: {key}, msg: {msg}')
 
     try:
         cur_value = redis_db.hgetall(key)
@@ -246,24 +261,24 @@ def _enqueue(operation, channel, msg):
         else:
             raise Exception(f'Channel {key} contains unprocessed message')
     finally:
-        logger.debug(' out of _enqueue')
+        logger.debug(f' out of _enqueue ({local_transaction})')
 
-def _dequeue(operation, channel, reset_first):
+def _dequeue(local_transaction, operation, channel, reset_first):
     key = f'{channel}:{operation}'
-    logger.debug(f' into _dequeue: key: {key}, reset_first: {reset_first}')
+    logger.debug(f' into _dequeue ({local_transaction}): key: {key}, reset_first: {reset_first}')
     message = None
     valid_reader = True
     try:
         dequeue_busy = redis_db.hget(key, DEQUEUE_BUSY) or DEQUEUE_IDLE_STATUS
         if dequeue_busy == DEQUEUE_BUSY_STATUS:
             valid_reader = False
-            logger.debug(f'  _dequeue detected redundant reader: {operation}, channel: {channel}')
+            logger.debug(f'  _dequeue ({local_transaction}) detected redundant reader: {operation}, channel: {channel}')
         else:
             _set_key_value(key, {DEQUEUE_BUSY: DEQUEUE_BUSY_STATUS})
             if reset_first: # Clear out any (presumably dead) reader ... assume first dequeue precedes first enqueue
                 _del_message(key, permissive=True)
             _set_key_value(key, {PICKUP_TIME: ''})
-            _expire(key)
+            _expire(key) # Needed in case nothing ever adds to this queue (via _enqueue)
 
             # Use a heuristic to figure out how often to poll redis for a request or reply. This is useful because
             # there are known to be zombie waiters, particularly because the browser create virtual machines
@@ -295,15 +310,15 @@ def _dequeue(operation, channel, reset_first):
             # TODO: Polling is good enough for now, but for scaling, replace with await
 
             if message:
-                logger.debug(f'  _dequeue returns: {message}')
+                logger.debug(f'  _dequeue ({local_transaction}) returns: {message}')
                 _del_message(key)
                 _set_key_value(key, {PICKUP_TIME: time.asctime(), REPLY_FAST_POLLS_LEFT: ALLOWED_FAST_DEQUEUE_POLLS})
             else:
-                logger.debug(f'  _dequeue timed out: {operation}, channel: {channel}, fast polls left: {fast_polls_left}, polling seconds: {dequeue_polling_secs}')
+                logger.debug(f'  _dequeue ({local_transaction}) timed out: {operation}, channel: {channel}, fast polls left: {fast_polls_left}, polling seconds: {dequeue_polling_secs}')
     finally:
         if valid_reader:
             _set_key_value(key, {DEQUEUE_BUSY: DEQUEUE_IDLE_STATUS})
-        logger.debug(' out of _dequeue')
+        logger.debug(f' out of _dequeue ({local_transaction})')
 
     return message, valid_reader
 
@@ -337,6 +352,12 @@ def _update_stats(operation, msg):
 def _expire(key):
     if redis_db.expire(key, EXPIRE_SECS) != 1:
         raise Exception(f'redis failed expiring {key}')
+
+def _get_transaction_id():
+    global transaction_id
+    transaction_id += 1
+    return transaction_id
+
 
 if __name__=='__main__':
     debug = False
