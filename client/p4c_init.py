@@ -13,10 +13,23 @@
 #    exec(requests.get("https://raw.githubusercontent.com/cytoscape/jupyter-bridge/master/client/p4c_init.py").text)
 #    IPython.display.Javascript(_PY4CYTOSCAPE_BROWSER_CLIENT_JS) # Start browser client
 #
+# This code can be customized by setting variables ahead of the exec() call. Specifically:
+#
+# * _PY4CYTOSCAPE ... names the actual module to be loaded (default: py4cytocape in PyPI)
+# * _PY4CYTOSCAPE_DEBUG_BROWSER ... True browser debug console output (default: False)
+#
+# Examples of plausible _PY4CYTOSCAPE values:
+#
+# * Github master: 'git+https://github.com/cytoscape/py4cytoscape'
+# * Github 0.0.10 branch: 'git+https://github.com/cytoscape/py4cytoscape@0.0.10'
+#
+# Note that with the exception of _PY4CYTOSCAPE_BROWSER_CLIENT_JS, this code's variables
+# are not intended to be accessed by user code.
+#
 # Note that due to the brittleness of the IPython.display.Javascript()
 # function, it must be the last statement in the cell, not the last
 # statement in the last block (e.g., try-except or if-then) ... really ... it must
-# be the last statement in the cell.
+# be the *last* statement in the cell.
 #
 # This code creates the Jupyter-Bridge javascript functions that implement the
 # Jupyter-Bridge web client, and encodes them in the _PY4CYTOSCAPE_BROWSER_CLIENT_JS
