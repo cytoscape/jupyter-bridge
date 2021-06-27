@@ -298,6 +298,7 @@ There are several useful logs:
 |  /var/log/nginx/*.log | nginx connect/error logs  |
 | /var/log/redis/redis-server.log   | redis liveness log |
 | ~/jupyter-bridge/server/jupyter-bridge.log   | record of all requests/replies to jupyter/bridge |
+| ~/jupyter-bridge/server/uwsgi.jupyter-bridge.log   | record of all uwsgi requests/replies to jupyter/bridge |
 | In Jupyter Notebook: logs/py4cytoscape.log   | record of all py4cytoscape requests/replies |
 | In browser console: let showDebug=true   | record of all browser interactions with Jupyter-Bridge and CyREST |
 
@@ -306,6 +307,6 @@ There are several useful logs:
 Jupyter-Bridge is released under the MIT License (see [LICENSE](LICENSE) file):
 
 ```
-    Copyright (c) 2018-2020 The Cytoscape Consortium
+    Copyright (c) 2018-2021 The Cytoscape Consortium
     Barry Demchak <bdemchak@ucsd.edu>
 ```
