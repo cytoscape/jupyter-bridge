@@ -26,6 +26,8 @@ As with py4cytoscape running on a workstation, each remote py4cytoscape can pair
 
 → _Bonus Question:_ Why couldn’t this have been done via a `%%javascript` cell in any Jupyter Notebook?? _Answer:_ The Cytoscape call could have, but because of the way Jupyter manages its ZeroMQ queues, the Cytoscape reply could not be returned to the workflow until after all cells had finished executing. Cytoscape workflows need the reply for one request before it can proceed to the next.
 
+Note that Jupyter-Bridge works well when a Chrome and Firefox browser is the client. It does not work with Safari as a client, likely due to some CORS issue. We recommend Chrome and Firefox, but not Safari.
+
 ## Trying out Jupyter-Bridge
 You can quickly determine whether Jupyter-Bridge is up by using a common browser:
 
