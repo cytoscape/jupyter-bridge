@@ -302,6 +302,53 @@ There are several useful logs:
 | In Jupyter Notebook: logs/py4cytoscape.log   | record of all py4cytoscape requests/replies |
 | In browser console: let showDebug=true   | record of all browser interactions with Jupyter-Bridge and CyREST |
 
+# Debugging and Development
+Jupyter-Bridge debugging during normal execution starts with looking at the runtime logs listed above.
+
+During development, Jupyter-Bridge (jupyter_bridge.py) can be run inside of PyCharm, and it can be called by 
+JupyterBridgeTests (test_jupyter_bridge.py). In this arrangement, both will be running at the same time, and it's 
+possible to set breakpoints in each.
+
+A Redis server should be installed and running on the same machine as PyCharm. On Windows, this means installing 
+![Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/about) and 
+then ![installing Redis](https://phoenixnap.com/kb/install-redis-on-ubuntu-20-04) inside of it. Once that is done,
+you can start Redis from the WSL command line:
+
+`service redis-server start`
+
+You can use the Redis command line interface from the WSL command line if you want to query Redis directly.
+
+To debug using PyCharm:
+
+1. Start Jupyter-Bridge by right-clicking within a Jupyter-Bridge source code window and then choosing either Debug or Run.
+
+2. Start JupyterBridgeTests by right-clicking within a JupyterBridgeTests source code window, and then choosing either Debug or Run.
+
+Jupyter-Bridge will find Redis automatically at 127.0.0.1:6379 (assuming it has been started in WSL).
+
+JupyterBridgeTests automatically connects to https://jupyter-bridge.cytoscape.org, which is probably not appropriate. To
+connect to the PyCharm version, set the JUPYTER_BRIDGE_URL environment variable in PyCharm's JupyterBridgeTests profile to
+'http://127.0.0.1:5000'.
+
+While the JupyterBridgeTests address basic functionality, Jupyter-Bridge should be tested on an actual server, too:
+
+1. Use PyCharm to check in changes to GitHub
+
+3. On the production server, establish /home/bdemchak as the working directory
+
+5. Run jupyter-bridge/dev/git-jupyter-bridge.sh
+
+7. Run jupyter-bridge/dev/restart-uwsgi.sh
+
+9. On a Cytoscape workstation, start Cytoscape.
+
+11. Using a browser, open Google Colab and run a ![sample workflow](https://github.com/bdemchak/cytoscape-jupyter/blob/main/gangsu/basic%20protocol%201.ipynb)
+
+
+
+
+
+
 
 # License
 Jupyter-Bridge is released under the MIT License (see [LICENSE](LICENSE) file):
