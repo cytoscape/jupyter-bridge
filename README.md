@@ -336,15 +336,17 @@ While the JupyterBridgeTests address basic functionality, Jupyter-Bridge should 
 
 1. Use PyCharm to check in changes to GitHub
 
-3. On the production server, establish /home/bdemchak as the working directory
+2. On the production server, establish /home/bdemchak as the working directory
 
-5. Run jupyter-bridge/dev/git-jupyter-bridge.sh
+3. Run jupyter-bridge/dev/git-jupyter-bridge.sh
 
-7. Run jupyter-bridge/dev/restart-uwsgi.sh
+4. Run jupyter-bridge/dev/restart-uwsgi.sh
 
-9. On a Cytoscape workstation, start Cytoscape.
+5. Use a browser to open https://jupyter-bridge.cytoscape.org/ping ... a version identifier for the newly executing Jupyter-Bridge should appear
 
-11. Using a browser, open Google Colab and run a ![sample workflow](https://github.com/bdemchak/cytoscape-jupyter/blob/main/gangsu/basic%20protocol%201.ipynb)
+6. On a Cytoscape workstation, start Cytoscape.
+
+7. Using a browser, open Google Colab and run a ![sample workflow](https://github.com/bdemchak/cytoscape-jupyter/blob/main/gangsu/basic%20protocol%201.ipynb)
 
 
 
