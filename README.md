@@ -284,13 +284,15 @@ Note that all channels expire and are removed automatically 24 hours after they 
 
 There are several useful scripts in jupyter-bridge/dev:
 
-| Script | Use |
-| :--- | :--- |
-|  restart-nginx.sh | Restarts nginx – should be rarely/never needed  |
-| restart-uwsgi.sh   | Restarts Jupyter-Bridge – clears log files, too |
-| show-uwshi-log.sh   | Dumps Jupyter-Bridge log file to console |
-| run-tests.sh   | Tests that Juptyer-bridge is running – takes 3 min |
-| git-jupyter-bridge.sh   | Clears out existing Juptyer-Bridge and clones anew |
+| Script                     | Use                                                |
+|:---------------------------|:---------------------------------------------------|
+| restart-nginx.sh           | Restarts nginx – should be rarely/never needed     |
+| restart-uwsgi.sh           | Restarts Jupyter-Bridge – clears log files, too    |
+| show-uwshgi-log.sh         | Dumps uwsgi log file to console                    |
+ | show-jupyter-bridge-log.sh | Dumps Jupyter-Bridge log file to console           |
+ | show-nginx-log.sh | Dumps nginx HTTP log to console |
+| run-tests.sh               | Tests that Juptyer-bridge is running – takes 3 min |
+| git-jupyter-bridge.sh      | Clears out existing Juptyer-Bridge and clones anew |
 
 
 There are several useful logs:
