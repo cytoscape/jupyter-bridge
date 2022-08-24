@@ -50,6 +50,39 @@ class JupyterBridgeTests(unittest.TestCase):
         pass
 
     @print_entry_exit
+    def test_round_trip(self):
+        # Verify that dequeue request returns error when no request was posted
+        res = requests.get(f'{BRIDGE_URL}/dequeue_request?channel=test')
+        self.assertEqual(res.status_code, 408)
+
+        # Verify that a request can be posted
+        res = requests.post(f'{BRIDGE_URL}/queue_request?channel=test', json=TEST_JSON,
+                            headers={'Content-Type': 'application/json'})
+        self.assertEqual(res.status_code, 200)
+
+        # Verify that the posted request can be read back
+        res = requests.get(f'{BRIDGE_URL}/dequeue_request?channel=test')
+        self.assertEqual(res.status_code, 200)
+        message = json.loads(res.text)
+        self.assertDictEqual(message, TEST_JSON)
+
+        # Verify that dequeue reply returns error when no reply was posted
+        res = requests.get(f'{BRIDGE_URL}/dequeue_reply?channel=test')
+        self.assertEqual(res.status_code, 408)
+
+        # Verify that a reply can be posted
+        res = requests.post(f'{BRIDGE_URL}/queue_reply?channel=test', json=TEST_JSON,
+                            headers={'Content-Type': 'text/plain'})
+        self.assertEqual(res.status_code, 200)
+
+        # Verify that the posted reply can be read back
+        res = requests.get(f'{BRIDGE_URL}/dequeue_reply?channel=test')
+        self.assertEqual(res.status_code, 200)
+        message = json.loads(res.text)
+        self.assertDictEqual(message, TEST_JSON)
+
+
+    @print_entry_exit
     def test_ping(self):
         res = requests.get(f'{BRIDGE_URL}/ping', headers={'Content-Type': 'text/plain'})
         self.assertEqual(res.status_code, 200)
