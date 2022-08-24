@@ -1,1 +1,1 @@
-tail -f jupyter-bridge/server/jupyter-bridge.log -n 100
+tail -f jupyter-bridge/server/uwsgi.jupyter-bridge.log -n 100
