@@ -44,7 +44,7 @@ JUPYTER_BRIDGE_VERSION = '0.0.4'
 
 # Set up detail logger
 logger = logging.getLogger('jupyter-bridge')
-logger_handler = RotatingFileHandler('jupyter-bridge.log', maxBytes=1048576, backupCount=10, encoding='utf8')
+logger_handler = RotatingFileHandler('jupyter-bridge.log', maxBytes=10485760, backupCount=10, encoding='utf8')
 logger_handler.setLevel('DEBUG')
 logger_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
 logger.setLevel('DEBUG')
