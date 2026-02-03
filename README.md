@@ -9,7 +9,7 @@ response travels the reverse route.
 **Warning**: Jupyter-Bridge relies on a shim that runs in your local browser. The shim operates in the background and receives commands
 from the Jupyter-Bridge server and executes it on Cytoscape via a Javascript XMLHttpRequest() call to http://127.0.0.1/v1. This
 fails when the browser implements Private Network Access (PNA), which believes this type of local call represents a security risk.
-PNA is implemented on browsers Chromium 142+, including Chrome and Edge, but not including Firefox. (A remote py4cytoscape workflow will report this failure as not being able to find a Cytoscape instance.) Therefore, we recommend executing remote workflows on Firefox and not Chrome or Edge. For more information, see [below](The-CORS-Policy-Failure).
+PNA is implemented on browsers Chromium 142+, including Chrome and Edge, but not including Firefox. (A remote py4cytoscape workflow will report this failure as not being able to find a Cytoscape instance.) Therefore, we recommend executing remote workflows on Firefox and not Chrome or Edge. For more information, see [below](#The-CORS-Policy-Failure).
 
 ## The Problem
 Currently, a Python-based workflow can leverage Cytoscape features by calling Cytoscape via py4cytoscape/CyREST over a 
