@@ -6,6 +6,11 @@ on a PC-local Cytoscape -- the remote Jupyter runs the request through Jupyter-B
 Javascript code running on the Jupyter web page in the PC-local browser, which in turn calls Cytoscape. The Cytoscape
 response travels the reverse route.
 
+**Warning**: Jupyter-Bridge relies on a shim that runs in your local browser. The shim operates in the background and receives commands
+from the Jupyter-Bridge server and executes it on Cytoscape via a Javascript XMLHttpRequest() call to http://127.0.0.1/v1. This
+fails when the browser implements Private Network Access (PNA), which believes this type of local call represents a security risk.
+PNA is implemented on browsers Chromium 142+, including Chrome and Edge, but not including Firefox. (A remote py4cytoscape workflow will report this failure as not being able to find a Cytoscape instance.) Therefore, we recommend executing remote workflows on Firefox and not Chrome or Edge. For more information, see [below](The-CORS-Policy-Failure).
+
 ## The Problem
 Currently, a Python-based workflow can leverage Cytoscape features by calling Cytoscape via py4cytoscape/CyREST over a 
 channel created on localhost (see below). This means that the workflow must be executing on the same workstation as 
@@ -351,8 +356,125 @@ While the JupyterBridgeTests address basic functionality, Jupyter-Bridge should 
 7. Using a browser, open Google Colab and run a ![sample workflow](https://github.com/bdemchak/cytoscape-jupyter/blob/main/gangsu/basic%20protocol%201.ipynb)
 
 
+# The CORS Policy Failure
+As described above, remote py4cytoscape workflows now fail when running in a Chrome or Edge browser (which are both based on Chromium 142+). Executing within Firefox does not fail, as it's not based on Chromium.
 
+The following text is an explanation given by Copilot on Feb 3, 2026:
 
+_how to solve chrome error "has been blocked by CORS policy: Permission was denied for this request to access the `loopback` address space. " when accessing XMLHttpRequest_
+
+Chrome is blocking your request because, as of Chromium 142+, browsers now enforce Private Network Access (PNA) rules that forbid public origin pages from calling localhost, 127.0.0.1, or other loopback/private IPs unless the browser has explicit permission. This is not a normal CORS issue—you must satisfy Chrome’s new local network access requirements. 
+
+*Why This Error Happens*
+
+Chrome 142+ introduced Local Network Access (LNA) restrictions under the broader Private Network Access (PNA) spec:
+* A page loaded from a public origin (e.g., https://example.com) is not allowed to send XHR/fetch requests to:
+1. http://localhost:*
+1. http://127.0.0.1:*
+1. http://[::1]:*
+1. Any RFC1918 private IP (192.168.x.x, 10.x.x.x, etc.)
+* Chrome blocks the request before it reaches your server, even if your server sends perfect CORS headers.
+* The browser shows: “Permission was denied for this request to access the loopback address space.”
+
+This is a browser security feature, not a server misconfiguration. 
+
+*How to Fix It (Choose the Option That Fits Your Setup)*
+
+✅ 1. Serve the Frontend From a Private/Local Origin
+
+If your frontend is on a public domain, Chrome treats the request as “public → private,” which is forbidden.
+
+Fix: Run your frontend locally during development:
+
+1. Code
+1. http://localhost:3000
+1. http://127.0.0.1:8080
+1. Local → local is allowed.
+
+✅ 2. Enable Chrome’s Local Network Access Prompt
+
+Chrome 142+ sometimes shows a permission prompt:
+
+> “Allow this site to access devices on your local network?”
+
+If you missed it:
+
+1.	Go to: chrome://settings/content/privateNetworkAccess
+1.	Add your site to Allowed to access local network.
+   
+This grants explicit permission for public → private requests. 
+
+✅ 3. Use HTTPS on Both Frontend and Backend
+
+Chrome requires secure contexts for PNA preflights.
+
+* Frontend must be https://
+* Backend (even localhost) should ideally be https://localhost:xxxx
+  
+You can generate a self signed cert or use mkcert.
+
+✅ 4. Implement the Required PNA Preflight Response
+
+Chrome sends a special preflight:
+
+>Code
+>
+>OPTIONS /...
+>
+>Access-Control-Request-Private-Network: true
+
+Your server must respond with:
+>Code
+>
+>Access-Control-Allow-Private-Network: true
+>
+>Access-Control-Allow-Origin: https://your-frontend.com
+>
+>Access-Control-Allow-Methods: GET, POST, OPTIONS
+
+But Chrome may still block the request unless the browser permission (Option 2) is granted. 
+
+✅ 5. Use a Reverse Proxy Instead of Direct Loopback Calls
+
+If your frontend is public:
+Code
+Frontend (public) → Your server (public) → localhost service
+Examples:
+* NGINX reverse proxy
+* Cloudflare Tunnel
+* Caddy
+* Node/Express proxy middleware
+  
+This avoids public → private network access entirely.
+
+✅ 6. For Development Tools (e.g., Web TWAIN, Local Agents)
+
+Many local helper services broke after Chrome 142.
+
+Vendors recommend:
+* Updating to the latest version of the local service
+* Using their HTTPS localhost endpoint
+* Adding your site to Chrome’s “Allowed local network access” list 
+
+What Will Not Fix It
+* Adding Access-Control-Allow-Origin: *
+* Adding more CORS headers
+* Disabling CORS in your backend
+* Using Chrome flags like --disable-web-security (Chrome removed most bypasses)
+
+This is not a CORS bug—it’s a PNA security enforcement.
+
+_Recommended Fix for Most Developers_
+
+If you’re developing locally:
+1.	Run frontend on http://localhost
+2.	Run backend on http://localhost
+3.	Ensure backend responds to PNA preflight
+4.	If Chrome prompts for local network access, click Allow
+
+If your frontend is public but needs to talk to a local agent (e.g., scanner, printer, IoT):
+
+* Use a reverse proxy or require users to grant Chrome’s local network permission.
 
 
 
@@ -360,6 +482,6 @@ While the JupyterBridgeTests address basic functionality, Jupyter-Bridge should 
 Jupyter-Bridge is released under the MIT License (see [LICENSE](LICENSE) file):
 
 ```
-    Copyright (c) 2018-2021 The Cytoscape Consortium
+    Copyright (c) 2018-2026 The Cytoscape Consortium
     Barry Demchak <bdemchak@ucsd.edu>
 ```
